@@ -1,0 +1,18 @@
+{
+  "description": "Change the settings of an existing light (id from studio_list_objects, kind='light'). Every field is optional and absolute; omitted fields keep their current value. Use studio_set_object_transform to move or aim the light. Returns the light's resulting state.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "scene object id of the light" },
+      "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4, "description": "[r,g,b] or [r,g,b,a], each 0..1" },
+      "intensity": { "type": "number", "minimum": 0 },
+      "range": { "type": "number", "minimum": 0, "description": "point/spot lights only" },
+      "spot_angle": { "type": "number", "minimum": 0, "maximum": 180, "description": "spot lights only" },
+      "enabled": { "type": "boolean" },
+      "shadow": { "type": "boolean" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "same shape as one entry of studio_list_objects, with the 'light' field filled" }
+}

@@ -1,0 +1,23 @@
+{
+  "description": "List the saved Studio scenes available on disk (UserData/Studio/scene). Returns paths usable as-is with studio_load_scene.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "query": { "type": "string", "description": "case-insensitive substring matched against the scene path" },
+      "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100 }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "path relative to the scene folder, pass this to studio_load_scene" },
+        "folder": { "type": "string" },
+        "size": { "type": "integer" }
+      },
+      "required": ["path", "folder", "size"]
+    }
+  }
+}

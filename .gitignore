@@ -1,0 +1,21 @@
+# local tool state
+.standarflow/
+
+# .NET
+plugin/**/bin/
+plugin/**/obj/
+*.user
+GamePath.local.props
+
+# JS / Bun
+node_modules/
+bun.lock?
+mcp/dist/
+
+# OS
+desktop.ini
+Thumbs.db
+
+# local-only game paths / secrets
+*.local.json
+.env

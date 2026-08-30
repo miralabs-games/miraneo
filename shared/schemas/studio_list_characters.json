@@ -1,0 +1,81 @@
+{
+  "description": "List every character currently present in the Studio scene, with its stable id, display name, card full name, sex, visibility, transform (pos/rot euler/scale), current animation, kinematic mode, face state and expression category flags. This is the tool to call to read back the result of studio_set_character_pose, studio_set_character_anime and studio_set_character_expression.",
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer", "description": "stable scene object id (Studio dicObjectCtrl key)" },
+        "name": { "type": ["string", "null"], "description": "workspace display name" },
+        "full_name": { "type": ["string", "null"], "description": "character card full name" },
+        "sex": { "type": "string", "enum": ["male", "female", "unknown"] },
+        "visible": { "type": "boolean" },
+        "transform": { "$ref": "#/$defs/transform" },
+        "anime": {
+          "type": ["object", "null"],
+          "description": "current base animation; group/category/no round-trip into studio_set_character_anime",
+          "properties": {
+            "group": { "type": "integer" },
+            "category": { "type": "integer" },
+            "no": { "type": "integer" },
+            "name": { "type": ["string", "null"] },
+            "group_name": { "type": ["string", "null"] },
+            "category_name": { "type": ["string", "null"] },
+            "normalized_time": { "type": "number", "description": "live sample of the Animator's normalized time — it keeps growing while a looping clip plays, so it does not round-trip into studio_set_character_anime as a stable value" },
+            "speed": { "type": "number" }
+          }
+        },
+        "kinematic": {
+          "type": ["object", "null"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["none", "fk", "ik"] },
+            "ik": { "type": "boolean", "description": "IK enabled" },
+            "fk": { "type": "boolean", "description": "FK enabled" },
+            "active_ik": { "type": "array", "items": { "type": "boolean" }, "description": "per IK bone group" },
+            "active_fk": { "type": "array", "items": { "type": "boolean" }, "description": "per FK bone group" }
+          }
+        },
+        "face": {
+          "type": ["object", "null"],
+          "description": "all fields round-trip into studio_set_character_expression",
+          "properties": {
+            "eyebrows": { "type": "integer", "description": "index in the eyebrow pattern list, -1 if the current pattern is not in it" },
+            "eyebrows_count": { "type": "integer", "description": "valid range for 'eyebrows' is 0..eyebrows_count-1" },
+            "eyes": { "type": "integer" },
+            "eyes_count": { "type": "integer" },
+            "eyes_open": { "type": "number" },
+            "blink": { "type": "boolean" },
+            "mouth": { "type": "integer" },
+            "mouth_open": { "type": "number" },
+            "lip_sync": { "type": "boolean" },
+            "tears": { "type": "number" },
+            "blush": { "type": "number" },
+            "look_eyes": { "type": "integer" },
+            "look_neck": { "type": "integer" }
+          }
+        },
+        "expression": {
+          "type": "array",
+          "items": { "type": "boolean" },
+          "description": "expression category toggles; the index of each entry is the key used by studio_set_character_expression's 'expression_categories'"
+        }
+      },
+      "required": ["id", "sex", "visible"]
+    },
+    "$defs": {
+      "transform": {
+        "type": ["object", "null"],
+        "properties": {
+          "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "description": "Apply a saved pose file to a character. A pose restores the whole body state at once: base animation, every IK and FK bone target, and the expression category flags. 'path' must come from studio_list_poses, and the pose's sex must match the character's. To set only the base animation instead, use studio_set_character_anime. Not undoable from Studio.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "path": { "type": "string", "description": "pose path from studio_list_poses" }
+    },
+    "required": ["id", "path"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters — check 'anime' and 'kinematic' to confirm the pose was applied" }
+}

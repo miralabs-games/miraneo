@@ -1,0 +1,22 @@
+{
+  "description": "Get runtime information about the Studio NEO V2 process: game/engine versions, plugin status and whether a Studio scene is loaded. Works even before the Studio scene is ready.",
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "product_name": { "type": ["string", "null"] },
+      "unity_version": { "type": ["string", "null"] },
+      "game_version": { "type": ["string", "null"], "description": "content of the game-root version file" },
+      "plugin_version": { "type": "string" },
+      "bepinex_version": { "type": ["string", "null"] },
+      "active_scene": { "type": ["string", "null"] },
+      "studio_loaded": { "type": "boolean" },
+      "scene_object_count": { "type": "integer" }
+    },
+    "required": ["plugin_version", "studio_loaded", "scene_object_count"]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "description": "Search Studio's asset catalogs to find the ids needed to spawn things or drive characters. catalog='item' returns props/furniture/effects with the (group, category, no) triple required by studio_create_object; catalog='light' returns the light types with the 'no' required by studio_create_light; catalog='anime' returns the animation clips with the (group, category, no) triple required by studio_set_character_anime. Always call this before creating an object or setting an animation — ids cannot be guessed.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "catalog": { "type": "string", "enum": ["item", "light", "anime"], "default": "item" },
+      "query": { "type": "string", "description": "case-insensitive substring matched against the asset name, and (for items and animations) its group and category names. Omit to list everything up to 'limit'." },
+      "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50 }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "catalog": { "type": "string", "enum": ["item", "light", "anime"] },
+        "group": { "type": ["integer", "null"], "description": "items and animations only" },
+        "category": { "type": ["integer", "null"], "description": "items and animations only" },
+        "no": { "type": "integer" },
+        "name": { "type": ["string", "null"] },
+        "group_name": { "type": ["string", "null"] },
+        "category_name": { "type": ["string", "null"] },
+        "target": { "type": ["string", "null"], "description": "lights only: All, Chara or Map — what the light illuminates" }
+      },
+      "required": ["catalog", "no"]
+    }
+  }
+}

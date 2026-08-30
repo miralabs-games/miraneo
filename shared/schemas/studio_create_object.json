@@ -1,0 +1,17 @@
+{
+  "description": "Spawn an item (prop, furniture, effect...) into the scene. The (group, category, no) triple must come from studio_search_catalog — it cannot be guessed. Optionally places the object; otherwise Studio's default spawn position is used. The creation is undoable in Studio. Returns the created object, including its id.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "group": { "type": "integer", "description": "from studio_search_catalog" },
+      "category": { "type": "integer", "description": "from studio_search_catalog" },
+      "no": { "type": "integer", "description": "from studio_search_catalog" },
+      "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "euler degrees" },
+      "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "1,1,1 is the default size" }
+    },
+    "required": ["group", "category", "no"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "same shape as one entry of studio_list_objects" }
+}

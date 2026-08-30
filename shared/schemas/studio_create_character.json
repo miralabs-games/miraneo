@@ -1,0 +1,16 @@
+{
+  "description": "Add a character to the scene from a card file. 'card' must come from studio_list_character_cards — its 'female/' or 'male/' prefix is what selects which character is created. Position, orientation and scale are optional (scene scale is not metres — read an existing object's transform first). WARNING: Studio NEO V2 has no undo command for adding a character, so this clears Studio's undo stack, exactly like the Add menu does.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "card": { "type": "string", "description": "card path from studio_list_character_cards, e.g. 'female/foo.png'" },
+      "sex": { "type": "string", "enum": ["female", "male"], "description": "only needed when 'card' is an absolute path outside UserData/chara" },
+      "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "euler degrees" },
+      "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+    },
+    "required": ["card"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "same shape as one entry of studio_list_objects, with kind='character'" }
+}

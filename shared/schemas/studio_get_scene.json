@@ -1,0 +1,23 @@
+{
+  "description": "Summarize the current Studio NEO V2 scene: object counts per kind plus background/frame. Fails with 'studio not ready' until the Studio scene has finished loading.",
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "total_objects": { "type": "integer" },
+      "characters": { "type": "integer" },
+      "items": { "type": "integer" },
+      "lights": { "type": "integer" },
+      "folders": { "type": "integer" },
+      "routes": { "type": "integer" },
+      "cameras": { "type": "integer" },
+      "background": { "type": ["string", "null"] },
+      "frame": { "type": ["string", "null"] }
+    },
+    "required": ["total_objects", "characters", "items", "lights", "folders", "routes", "cameras"]
+  }
+}

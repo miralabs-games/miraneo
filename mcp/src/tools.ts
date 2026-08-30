@@ -1,0 +1,100 @@
+import { MiraBridge } from "./bridge.ts";
+import getInfo from "../../shared/schemas/studio_get_info.json";
+import getScene from "../../shared/schemas/studio_get_scene.json";
+import listCharacters from "../../shared/schemas/studio_list_characters.json";
+import listObjects from "../../shared/schemas/studio_list_objects.json";
+import getCamera from "../../shared/schemas/studio_get_camera.json";
+import screenshot from "../../shared/schemas/studio_screenshot.json";
+import searchCatalog from "../../shared/schemas/studio_search_catalog.json";
+import listScenes from "../../shared/schemas/studio_list_scenes.json";
+import listCharacterCards from "../../shared/schemas/studio_list_character_cards.json";
+import listPoses from "../../shared/schemas/studio_list_poses.json";
+import createCharacter from "../../shared/schemas/studio_create_character.json";
+import setCharacterPose from "../../shared/schemas/studio_set_character_pose.json";
+import setCharacterAnime from "../../shared/schemas/studio_set_character_anime.json";
+import setCharacterExpression from "../../shared/schemas/studio_set_character_expression.json";
+import loadScene from "../../shared/schemas/studio_load_scene.json";
+import setCamera from "../../shared/schemas/studio_set_camera.json";
+import createObject from "../../shared/schemas/studio_create_object.json";
+import createLight from "../../shared/schemas/studio_create_light.json";
+import setLight from "../../shared/schemas/studio_set_light.json";
+import setObjectTransform from "../../shared/schemas/studio_set_object_transform.json";
+import deleteObject from "../../shared/schemas/studio_delete_object.json";
+
+interface ToolDef {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  timeoutMs: number;
+  image?: boolean;
+}
+
+interface ScreenshotResult {
+  format: string;
+  width: number;
+  height: number;
+  base64: string;
+}
+
+const def = (name: string, schema: { description: string; input: unknown }, timeoutMs: number, image = false): ToolDef => ({
+  name,
+  description: schema.description,
+  inputSchema: schema.input as Record<string, unknown>,
+  timeoutMs,
+  image,
+});
+
+export const TOOLS: ToolDef[] = [
+  def("studio_get_info", getInfo, 10000),
+  def("studio_get_scene", getScene, 15000),
+  def("studio_list_characters", listCharacters, 15000),
+  def("studio_list_objects", listObjects, 15000),
+  def("studio_get_camera", getCamera, 15000),
+  def("studio_screenshot", screenshot, 90000, true),
+  def("studio_search_catalog", searchCatalog, 30000),
+  def("studio_list_scenes", listScenes, 15000),
+  def("studio_list_character_cards", listCharacterCards, 240000),
+  def("studio_list_poses", listPoses, 240000),
+  def("studio_load_scene", loadScene, 240000),
+  def("studio_set_camera", setCamera, 15000),
+  def("studio_create_object", createObject, 90000),
+  def("studio_create_light", createLight, 90000),
+  def("studio_set_light", setLight, 15000),
+  def("studio_set_object_transform", setObjectTransform, 15000),
+  def("studio_delete_object", deleteObject, 15000),
+  def("studio_create_character", createCharacter, 180000),
+  def("studio_set_character_pose", setCharacterPose, 90000),
+  def("studio_set_character_anime", setCharacterAnime, 90000),
+  def("studio_set_character_expression", setCharacterExpression, 15000),
+];
+
+const bridge = new MiraBridge();
+
+export async function runTool(name: string, args: Record<string, unknown>) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) return errorResult(`unknown tool: ${name}`);
+  try {
+    const result = await bridge.call(name, args, tool.timeoutMs);
+    if (tool.image) {
+      const shot = result as ScreenshotResult;
+      return {
+        content: [
+          {
+            type: "image" as const,
+            data: shot.base64,
+            mimeType: shot.format === "png" ? "image/png" : "image/jpeg",
+          },
+          { type: "text" as const, text: `screenshot ${shot.width}x${shot.height} (${shot.format})` },
+        ],
+      };
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  } catch (e) {
+    return errorResult(e instanceof Error ? e.message : String(e));
+  }
+}
+
+const errorResult = (text: string) => ({
+  isError: true,
+  content: [{ type: "text" as const, text }],
+});

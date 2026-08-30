@@ -1,0 +1,21 @@
+{
+  "description": "Capture a screenshot of the Studio window (what the user sees, UI included) and return it as an image. Use it to visually inspect the scene after changes.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "format": { "type": "string", "enum": ["jpg", "png"], "default": "jpg", "description": "jpg is smaller, png is lossless" },
+      "quality": { "type": "integer", "minimum": 1, "maximum": 100, "default": 85, "description": "jpg quality, ignored for png" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "format": { "type": "string", "enum": ["jpg", "png"] },
+      "width": { "type": "integer" },
+      "height": { "type": "integer" },
+      "base64": { "type": "string" }
+    },
+    "required": ["format", "width", "height", "base64"]
+  }
+}

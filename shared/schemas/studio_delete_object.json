@@ -1,0 +1,18 @@
+{
+  "description": "Delete a scene object and all of its children (id from studio_list_objects). Deletion is NOT undoable in Studio and it also clears Studio's undo history, so confirm with the user before removing anything they did not just ask you to create.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "deleted": { "type": "integer", "description": "number of scene objects removed, including children" }
+    },
+    "required": ["deleted"]
+  }
+}

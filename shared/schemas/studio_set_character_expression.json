@@ -1,0 +1,29 @@
+{
+  "description": "Change a character's face: eyebrow/eye/mouth patterns, eye and mouth opening, blink, tears, blush, and where the eyes and neck look. Partial and absolute — only the fields you pass are applied, so repeating a call is idempotent. 'eyebrows' and 'eyes' are positions in the character's own pattern list, not asset ids: read 'face.eyebrows_count' / 'face.eyes_count' from studio_list_characters for the valid range, which depends on the character's sex and installed mods. Not undoable from Studio.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "eyebrows": { "type": "integer", "minimum": 0, "description": "index into the eyebrow pattern list (0..face.eyebrows_count-1)" },
+      "eyes": { "type": "integer", "minimum": 0, "description": "index into the eye pattern list (0..face.eyes_count-1)" },
+      "eyes_open": { "type": "number", "minimum": 0, "maximum": 1, "description": "how wide the eyes open" },
+      "blink": { "type": "boolean", "description": "automatic blinking" },
+      "mouth": { "type": "integer", "minimum": 0, "description": "mouth pattern index" },
+      "mouth_open": { "type": "number", "minimum": 0, "maximum": 1 },
+      "lip_sync": { "type": "boolean", "description": "drive the mouth from the character's voice instead of 'mouth_open'" },
+      "tears": { "type": "number", "minimum": 0, "maximum": 1 },
+      "blush": { "type": "number", "minimum": 0, "maximum": 1, "description": "cheek blush intensity" },
+      "look_eyes": { "type": "integer", "minimum": 0, "maximum": 4, "description": "eye look-at mode; 4 aims at the character's look-at target instead of the camera" },
+      "look_neck": { "type": "integer", "enum": [0, 1, 3, 4], "description": "neck look-at mode — Studio only exposes these four values" },
+      "expression_categories": {
+        "type": "object",
+        "description": "enable/disable whole expression categories by index, e.g. {\"0\": false} — the same toggles as Studio's expression panel. Valid indices are the positions of the 'expression' array returned by studio_list_characters.",
+        "propertyNames": { "pattern": "^[0-9]+$" },
+        "additionalProperties": { "type": "boolean" }
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters — read back 'face' to confirm" }
+}

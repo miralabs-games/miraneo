@@ -1,0 +1,16 @@
+{
+  "description": "Set a character's base animation from the anime catalog. The (group, category, no) triple must come from studio_search_catalog with catalog='anime'. This only changes the animation clip — it does not touch IK/FK targets or expressions; use studio_set_character_pose for a full body pose. Note that the anime catalog is not sex-filtered (Studio does not filter it either), so a clip authored for the other sex will load but may look wrong.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "group": { "type": "integer" },
+      "category": { "type": "integer" },
+      "no": { "type": "integer" },
+      "normalized_time": { "type": "number", "minimum": 0, "description": "where to start inside the clip, in Unity normalized time: the fractional part is the position in the clip, the integer part is the loop count. 0..1 covers one pass. Defaults to 0." }
+    },
+    "required": ["id", "group", "category", "no"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters" }
+}

@@ -1,0 +1,24 @@
+{
+  "description": "List the saved pose files available on disk (UserData/studio/pose/*.dat). Returns paths usable as-is with studio_set_character_pose. A pose file is sex-specific: it can only be applied to a character of the same sex.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "sex": { "type": "string", "enum": ["female", "male"], "description": "only return poses applicable to characters of this sex" },
+      "query": { "type": "string", "description": "case-insensitive substring matched against the pose name and its path" },
+      "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100 }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "path relative to the pose folder, pass this to studio_set_character_pose" },
+        "name": { "type": "string", "description": "name the pose was saved under in Studio" },
+        "sex": { "type": "string", "enum": ["female", "male"] }
+      },
+      "required": ["path", "name", "sex"]
+    }
+  }
+}

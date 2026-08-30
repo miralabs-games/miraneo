@@ -1,0 +1,20 @@
+{
+  "description": "Get the Studio viewport camera state: orbit target position, camera angle (euler), distance from the target, field of view, and the actual world position/rotation of the main camera. The first four round-trip directly into studio_set_camera.",
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "target_pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "angle": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "fov": { "type": "number" },
+      "distance": { "type": "number" },
+      "world_pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "world_rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+    },
+    "required": ["target_pos", "angle", "fov", "distance", "world_pos", "world_rot"]
+  }
+}

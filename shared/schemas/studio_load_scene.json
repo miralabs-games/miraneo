@@ -1,0 +1,19 @@
+{
+  "description": "Load a saved Studio scene, REPLACING everything currently in the workspace (characters, props, lights, map and camera). This discards unsaved work and cannot be undone, so only call it when the user asked to open a scene. Waits until the scene and its map are fully loaded, then returns the resulting scene summary.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "path": { "type": "string", "description": "path from studio_list_scenes (relative to the scene folder), or an absolute path. The .png extension may be omitted." }
+    },
+    "required": ["path"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "path": { "type": "string", "description": "absolute path actually loaded" },
+      "scene": { "type": "object", "description": "same shape as studio_get_scene" }
+    },
+    "required": ["path", "scene"]
+  }
+}

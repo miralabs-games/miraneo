@@ -1,0 +1,15 @@
+{
+  "description": "Move, rotate or scale any scene object — character, item, light, folder or camera (id from studio_list_objects or studio_list_characters). Values are absolute, not deltas, so repeating the same call is idempotent; omitted fields are left untouched. The change is undoable in Studio. Returns the object's resulting state.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer" },
+      "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "euler degrees" },
+      "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "same shape as one entry of studio_list_objects" }
+}

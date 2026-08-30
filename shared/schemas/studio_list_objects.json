@@ -1,0 +1,45 @@
+{
+  "description": "List every object in the Studio scene (characters, items, lights, folders, routes, cameras) with stable id, kind, name, visibility, parent id (for attached objects) and transform.",
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "kind": { "type": "string", "enum": ["character", "item", "light", "folder", "route", "camera", "unknown"] },
+        "name": { "type": ["string", "null"] },
+        "visible": { "type": "boolean" },
+        "parent_id": { "type": ["integer", "null"] },
+        "transform": {
+          "type": ["object", "null"],
+          "properties": {
+            "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+            "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+            "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+          }
+        },
+        "light": {
+          "type": ["object", "null"],
+          "description": "present only when kind='light'",
+          "properties": {
+            "no": { "type": "integer" },
+            "type": { "type": "string", "description": "Unity light type: Directional, Point, Spot, Area" },
+            "target": { "type": "string", "description": "All, Chara or Map — what the light illuminates" },
+            "color": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+            "intensity": { "type": "number" },
+            "range": { "type": "number" },
+            "spot_angle": { "type": "number" },
+            "enabled": { "type": "boolean" },
+            "shadow": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["id", "kind", "visible"]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mirastudio": {
+      "command": "bun",
+      "args": ["run", "mcp/src/index.ts"]
+    }
+  }
+}

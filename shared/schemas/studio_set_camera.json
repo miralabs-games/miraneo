@@ -1,0 +1,17 @@
+{
+  "description": "Move the Studio viewport camera. The camera orbits a target point: 'target_pos' is what it looks at, 'angle' is the orbit rotation in euler degrees, 'distance' is how far back it sits, 'fov' the field of view. All values are absolute and every field is optional — omitted fields keep their current value. Returns the resulting camera state.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "target_pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "world-space point the camera looks at" },
+      "angle": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "euler degrees; x pitches down/up, y orbits horizontally" },
+      "fov": { "type": "number", "minimum": 1, "maximum": 160, "description": "field of view in degrees (Studio default 23)" },
+      "distance": { "type": "number", "minimum": 0, "description": "distance from the target point" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "same shape as studio_get_camera"
+  }
+}

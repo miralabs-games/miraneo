@@ -1,0 +1,20 @@
+{
+  "description": "Add a light to the scene. 'no' selects the light type and must come from studio_search_catalog with catalog='light' (directional, point, spot...). Position, orientation and light settings are optional. Note: 'range' and 'spot_angle' only affect point/spot lights; a directional light is aimed with 'rot' alone. Returns the created object with its resulting light state.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "no": { "type": "integer", "description": "light type id from studio_search_catalog" },
+      "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "euler degrees — this is what aims a directional or spot light" },
+      "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4, "description": "[r,g,b] or [r,g,b,a], each 0..1" },
+      "intensity": { "type": "number", "minimum": 0 },
+      "range": { "type": "number", "minimum": 0, "description": "point/spot lights only" },
+      "spot_angle": { "type": "number", "minimum": 0, "maximum": 180, "description": "spot lights only" },
+      "enabled": { "type": "boolean" },
+      "shadow": { "type": "boolean" }
+    },
+    "required": ["no"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "same shape as one entry of studio_list_objects, with the 'light' field filled" }
+}
