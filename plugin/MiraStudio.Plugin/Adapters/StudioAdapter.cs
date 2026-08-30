@@ -242,6 +242,85 @@ namespace MiraStudio.Adapters
             return candidate;
         }
 
+        // Unlike ResolveScenePath this one feeds a write, so the result is confined
+        // to the scene folder: SceneInfo.Save opens with FileMode.Create and would
+        // truncate whatever it is pointed at.
+        public static string ResolveSaveScenePath(string name, bool overwrite, out bool overwriting)
+        {
+            if (string.IsNullOrEmpty(name)) name = DefaultSceneName();
+            if (Path.IsPathRooted(name) || name.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                throw new StudioApiException(StudioApiException.InvalidParams, "parameter 'name' must be a relative file name under UserData/Studio/scene");
+            if (!name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) name += ".png";
+
+            var full = Path.GetFullPath(Path.Combine(SceneRoot(), name.Replace('/', '\\')));
+            if (!full.StartsWith(SceneRootPrefix(), StringComparison.OrdinalIgnoreCase))
+                throw new StudioApiException(StudioApiException.InvalidParams, "parameter 'name' must stay inside UserData/Studio/scene");
+
+            overwriting = File.Exists(full);
+            if (overwriting && !overwrite)
+                throw new StudioApiException(StudioApiException.OperationFailed, "scene already exists: " + SceneRelative(full) + " (pass overwrite=true to replace it)");
+
+            var folder = Path.GetDirectoryName(full);
+            if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+            return full;
+        }
+
+        // Mirrors Studio.SaveScene, except for where the bytes land: Studio writes
+        // straight into the target with FileMode.Create and only then asks
+        // GameScreenShot for the thumbnail, so a failed capture leaves the previous
+        // scene truncated. Staging into a sibling file and moving it over the target
+        // makes a failed save a no-op instead.
+        public static SceneSaveDto SaveScene(string target, bool overwriting)
+        {
+            var studio = Require();
+            if (SingletonInitializer<Manager.Scene>.initialized && Manager.Scene.IsNowLoadingFade)
+                throw new StudioApiException(StudioApiException.OperationFailed, "a scene transition is in progress; retry once the fade finishes");
+
+            foreach (var pair in studio.dicObjectCtrl)
+                pair.Value.OnSavePreprocessing();
+
+            var info = studio.sceneInfo;
+            // SceneInfo.Save dereferences both without a null check, and Init()
+            // leaves cameraSaveData null until the session's first save or load.
+            info.cameraSaveData = studio.cameraCtrl.Export();
+            if (info.cameraData == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "the scene's camera slots are not initialised yet");
+
+            var staging = target + ".mirastudio-tmp";
+            try
+            {
+                info.Save(staging);
+                var written = new FileInfo(staging);
+                if (!written.Exists || written.Length == 0)
+                    throw new StudioApiException(StudioApiException.OperationFailed, "scene save produced no data");
+                // SceneInfo.Save always returns true, so the file itself is the only
+                // failure signal: the thumbnail is its first bytes and the loader
+                // (PngFile.GetPngSize) skips a well-formed PNG prefix to find the rest.
+                if (!HasPngHeader(staging))
+                    throw new StudioApiException(StudioApiException.OperationFailed, "thumbnail capture failed: the saved file has no PNG header and would not load back");
+                if (File.Exists(target)) File.Delete(target);
+                File.Move(staging, target);
+            }
+            catch
+            {
+                try { if (File.Exists(staging)) File.Delete(staging); }
+                catch { }
+                throw;
+            }
+
+            return new SceneSaveDto
+            {
+                Path = target,
+                RelativePath = SceneRelative(target),
+                Bytes = new FileInfo(target).Length,
+                Objects = info.dicObject.Count,
+                Overwritten = overwriting,
+                ThumbnailWidth = ThumbnailWidth,
+                ThumbnailHeight = ThumbnailHeight,
+                Scene = GetScene(),
+            };
+        }
+
         // Studio itself builds this list by fully loading every card at startup
         // (CharaList.InitFemaleList). LoadFileLimited reads the parameter block
         // only, and the result is cached per file so the cost is paid once.
@@ -572,6 +651,42 @@ namespace MiraStudio.Adapters
 
         private static string SceneRoot() => Path.Combine(UserData.Path, "Studio\\scene");
 
+        // UserData.Path is built from Application.dataPath + "/../", so SceneRoot is
+        // not normalised and cannot be used as a prefix on its own.
+        private static string SceneRootPrefix() => Path.GetFullPath(SceneRoot()).TrimEnd('\\') + "\\";
+
+        private static string SceneRelative(string full)
+        {
+            var prefix = SceneRootPrefix();
+            return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                ? full.Substring(prefix.Length).Replace('\\', '/')
+                : full.Replace('\\', '/');
+        }
+
+        // Studio's own naming (Studio.SaveScene): millisecond-stamped, never collides.
+        private static string DefaultSceneName()
+        {
+            var now = DateTime.Now;
+            return string.Format("{0}_{1:00}{2:00}_{3:00}{4:00}_{5:00}_{6:000}.png",
+                now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, now.Millisecond);
+        }
+
+        // Hardcoded at the CreatePngScreen call site inside SceneInfo.Save.
+        private const int ThumbnailWidth = 320;
+        private const int ThumbnailHeight = 180;
+
+        private static readonly byte[] PngHeader = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+
+        private static bool HasPngHeader(string path)
+        {
+            var head = new byte[PngHeader.Length];
+            using (var stream = File.OpenRead(path))
+                if (stream.Read(head, 0, head.Length) != head.Length) return false;
+            for (var i = 0; i < head.Length; i++)
+                if (head[i] != PngHeader[i]) return false;
+            return true;
+        }
+
         private static string CharaRoot() => Path.Combine(UserData.Path, "chara");
 
         private static string PoseRoot() => UserData.Create(SNeo.PauseCtrl.savePath);
@@ -801,7 +916,11 @@ namespace MiraStudio.Adapters
                 var oi = chr.oiCharInfo;
                 return new KinematicDto
                 {
-                    Mode = oi.kinematicMode.ToString().ToLowerInvariant(),
+                    // oiCharInfo.kinematicMode is dead data: OICharInfo.Load is its
+                    // only writer in the whole assembly, so it keeps reporting what
+                    // the scene file held after any ActiveKinematicMode call. The
+                    // live state is enableIK/enableFK, which are mutually exclusive.
+                    Mode = oi.enableIK ? "ik" : oi.enableFK ? "fk" : "none",
                     Ik = oi.enableIK,
                     Fk = oi.enableFK,
                     ActiveIk = (bool[])oi.activeIK.Clone(),

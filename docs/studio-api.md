@@ -43,7 +43,7 @@ public interface IStudioApi
 }
 ```
 
-`studio_load_scene` and `studio_set_camera` are not on this interface: both need to span frames and live in `Services/SceneService` and `Services/CameraService` as coroutine-backed `Task<JsonNode>`.
+`studio_load_scene`, `studio_save_scene` and `studio_set_camera` are not on this interface: all three need to span frames and live in `Services/SceneService` and `Services/CameraService` as coroutine-backed `Task<JsonNode>`.
 
 DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a dependency-free JSON reader/writer — the game ships no Newtonsoft).
 
@@ -80,6 +80,7 @@ DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a
 | Light settings | `OCILight.SetColor/SetIntensity/SetRange/SetSpotAngle/SetEnable/SetShadow` (pass `_force: true` — they no-op when the value is unchanged) |
 | Camera | `CameraControl.targetPos / cameraAngle / fieldOfView` properties; distance via `Export()` → `data.distance = (0,0,-d)` → `Import(data)` (`cameraData` itself is `protected`) |
 | Load scene | `Studio.Studio.LoadSceneCoroutine(path)` — **not** `LoadScene`, which returns before the map coroutine finishes |
+| Save scene | The three steps of `Studio.Studio.SaveScene()`: `OnSavePreprocessing()` over `dicObjectCtrl`, then `sceneInfo.cameraSaveData = cameraCtrl.Export()`, then `SceneInfo.Save(path)`. `SaveScene()` itself takes no path and stamps its own name, so it cannot be reused as-is. The thumbnail is produced inside `SceneInfo.Save` by `gameScreenShot.CreatePngScreen(320, 180)`, which re-renders `GameScreenShot.renderCam[]` into a temporary `RenderTexture` — no backbuffer grab, so no `WaitForEndOfFrame` is technically required, but the adapter waits for one anyway (see below) |
 | Delete | `treeNodeCtrl.DeleteNode(treeNodeObject)` (respects `enableDelete`, recurses into children, `Studio.OnDeleteNode` → `OCI.OnDelete` → `DeleteInfo` removes it from `dicObjectCtrl`) |
 | Scene folder | `UserData.Path` (root namespace, IL.dll) + `Studio\scene` |
 | Spawn character | `Studio.AddObjectFemale.Add(cardPath)` / `AddObjectMale.Add(cardPath)` → `OCICharFemale`/`OCICharMale`. Synchronous (`ChaControl.Load`), does the whole setup: `GetNewIndex`, `AddInfo`, `AddNode`, bones/IK/look-at, initial `LoadAnime`, expressions. |
@@ -88,7 +89,7 @@ DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a
 | Set animation | `OCIChar.LoadAnime(group, category, no, normalizedTime)`; catalog `Info.dicAnimeLoadInfo` (g→c→n→`AnimeLoadInfo.name`), names in `Info.dicAGroupCategory` |
 | Face | `OCIChar.ChangeEyesOpen/ChangeBlink/ChangeMouthPtn/ChangeMouthOpen/ChangeLipSync/SetTears/SetHohoAkaRate/ChangeLookEyesPtn/ChangeLookNeckPtn/EnableExpressionCategory`; eye and eyebrow patterns go through `ChaControl.ChangeEyesPtn/ChangeEyebrowPtn` |
 | Eye/eyebrow pattern list | `Singleton<Manager.Character>.Instance.chaListCtrl.GetCategoryInfo(ChaListDefine.CategoryNo.custom_eye{,brow}_{f,m}).Keys` |
-| Character state read-back | `OCIChar.oiCharInfo` (`animeInfo`, `kinematicMode`, `enableIK/FK`, `activeIK/FK`, `expression`, `mouthOpen`, `lipSync`), `OCIChar.charFileStatus` (`eyesOpenMax`, `eyesBlink`, `eyesLookPtn`, `neckLookPtn`), `charInfo.GetEyesPtn/GetEyebrowPtn/GetMouthPtn`, `charAnimeCtrl.normalizedTime` |
+| Character state read-back | `OCIChar.oiCharInfo` (`animeInfo`, `enableIK/FK`, `activeIK/FK`, `expression`, `mouthOpen`, `lipSync`), `OCIChar.charFileStatus` (`eyesOpenMax`, `eyesBlink`, `eyesLookPtn`, `neckLookPtn`), `charInfo.GetEyesPtn/GetEyebrowPtn/GetMouthPtn`, `charAnimeCtrl.normalizedTime`. **Not** `oiCharInfo.kinematicMode` — see below |
 
 Rules that follow from the above:
 
@@ -96,7 +97,11 @@ Rules that follow from the above:
 - `AddObjectCommand` only defines `AddItemCommand` and `AddLightCommand` — there is **no add-character command**. `Studio.AddFemale`/`AddMale` call `UndoRedoManager.Clear()` right after adding, and `CreateCharacter` mirrors that.
 - Eye and eyebrow patterns are asset ids, not contiguous indices (mods add ids far outside 0..N). `MPCharCtrl.EtcInfo` shows the *position* in the per-sex category list and maps it through the key array; the MCP surface uses that same index space so it agrees with what the user sees in Studio.
 - `charAnimeCtrl.normalizedTime` is Unity's Animator normalized time: it keeps growing while a clip loops and is only sampled a frame behind a `LoadAnime`, so it is a live reading, not a round-trip value.
+- `OICharInfo.kinematicMode` is **dead data**: `OICharInfo.Load` is its only writer in the whole assembly, and `ActiveKinematicMode` writes `enableIK`/`enableFK` instead. It keeps reporting whatever the scene file held, so `kinematic.mode` is derived from `enableIK`/`enableFK` (which are mutually exclusive by construction) rather than read from it.
 - A *pose file* is not an *animation*: `PauseCtrl.FileInfo.Apply` calls `LoadAnime` **and** restores every IK/FK target plus the expression flags, and is sex-locked; `LoadAnime` alone is not. The anime catalog itself is not sex-filtered — `MPCharCtrl.LoadAnime(sex, ...)` ignores its `sex` argument.
+- **Saving is not atomic in Studio and the destructive step comes first.** `SceneInfo.Save` opens the target with `FileMode.Create` — truncating it — and only *then* calls `CreatePngScreen`; a capture that throws leaves the previous scene destroyed. `SaveScene` therefore writes to a sibling `*.mirastudio-tmp` and `File.Move`s it over the target only once the bytes are known to start with the PNG signature. `SceneInfo.Save` returns `true` unconditionally (there is no `false` path), so inspecting the written file is the *only* failure signal.
+- `SceneInfo.cameraSaveData` is `null` until the session's first save or load (`Init()` clears it, the constructor never sets it) and `SceneInfo.Save` dereferences it with no guard — assigning `cameraCtrl.Export()` before saving is mandatory, not cosmetic. `cameraData[10]` is pre-filled by the constructor but only refilled by `Init()` when Studio is instanced, so it is null-checked too.
+- A save waits one `WaitForEndOfFrame` first. The thumbnail renders the live cameras, whose transform is only applied in `LateUpdate`, and `OCIChar.OnSavePreprocessing` dereferences `neckLookCtrl` / `charInfo.animBody` with no null guard — so a character added in the same dispatcher drain would NRE. One frame covers both.
 - Never hand out Unity object references — ids only (`dicObjectCtrl` keys).
 - The camera transform is recomputed in `LateUpdate` (`InternalUpdateCameraState`), so anything reading `Camera.main` back after a camera write must wait a frame.
 - Scene scale varies per scene; never assume 1 unit = 1 m when choosing distances or light ranges.

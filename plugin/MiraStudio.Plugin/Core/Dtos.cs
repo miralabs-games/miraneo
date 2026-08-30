@@ -244,6 +244,24 @@ namespace MiraStudio.Core
             .Add("size", Size);
     }
 
+    public sealed class SceneSaveDto
+    {
+        public string Path, RelativePath;
+        public long Bytes;
+        public int Objects, ThumbnailWidth, ThumbnailHeight;
+        public bool Overwritten;
+        public SceneSummaryDto Scene;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("path", Path)
+            .Add("relative_path", RelativePath)
+            .Add("bytes", Bytes)
+            .Add("objects", Objects)
+            .Add("overwritten", Overwritten)
+            .Add("thumbnail", new JsonObject().Add("width", ThumbnailWidth).Add("height", ThumbnailHeight))
+            .Add("scene", Scene != null ? Scene.ToJson() : JsonNull.Instance);
+    }
+
     // Absolute-value patch: only the fields the caller supplied are applied.
     public sealed class TransformPatch
     {

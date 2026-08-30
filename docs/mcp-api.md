@@ -24,6 +24,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | Tool | Description | Notes |
 |---|---|---|
 | `studio_load_scene` | Load a saved scene, replacing the workspace | destructive + not undoable; waits for the map coroutine to finish |
+| `studio_save_scene` | Save the workspace under `UserData/Studio/scene`, thumbnail included | the only way to persist agent work; refuses to replace a file unless `overwrite` |
 | `studio_set_camera` | Move the viewport camera (target/angle/distance/fov) | partial + absolute; reads back after a frame so `world_pos` is fresh |
 | `studio_create_object` | Spawn an item from `(group, category, no)` | optional pos/rot/scale; undoable in Studio |
 | `studio_create_light` | Add a light from its catalog `no` | optional transform + colour/intensity/range/spot/shadow |
@@ -42,6 +43,8 @@ Every write tool takes **absolute** values and applies only the fields present, 
 **Eye and eyebrow patterns are list positions, not asset ids.** Studio's own face panel shows the index inside the character's per-sex pattern list and maps it through the key array, because mods add non-contiguous ids. `studio_set_character_expression` uses that same index space; read `face.eyebrows_count` / `face.eyes_count` from `studio_list_characters` for the valid range.
 
 **Scene scale is not fixed.** Studio scenes are frequently built at a scale other than 1 unit = 1 m — a real user scene tested here has a ~15-unit-tall character. Read an object's `transform` before choosing camera distances or light ranges instead of assuming metres.
+
+**Saving does not disturb the live scene.** `studio_save_scene` is the only write tool that changes nothing in the workspace: no object is touched, the undo stack is left intact, and the viewport is unchanged. Its thumbnail is rendered from the cameras as they are at save time, so anything visible in `studio_screenshot` — including selection gizmos and IK/FK handles — lands in the preview. The tool waits for the end of the frame first, so a save issued right after `studio_set_camera` or `studio_create_character` still captures the new state.
 
 ## Wire protocol (plugin side)
 
@@ -65,4 +68,4 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-`studio_attach_object` (`TreeNodeCtrl.SetParent`), `studio_save_scene` (`SceneInfo.Save`), `studio_set_character_hands` (`OCIChar.ChangeHandAnime`), `studio_set_character_kinematics` (`ActiveKinematicMode` / `ActiveIK` / `ActiveFK` + per-bone targets), `execute_batch`.
+`studio_set_character_hands` (`OCIChar.ChangeHandAnime`), `studio_attach_object` (`TreeNodeCtrl.SetParent`, plus a `studio_list_attach_points` companion), `studio_set_character_kinematics` (`ActiveKinematicMode` / `ActiveIK` / `ActiveFK` + per-bone targets, plus a bone-discovery tool), `execute_batch`.

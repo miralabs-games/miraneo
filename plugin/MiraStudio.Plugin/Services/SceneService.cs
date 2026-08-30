@@ -23,6 +23,36 @@ namespace MiraStudio.Services
             return tcs.Task;
         }
 
+        // Saving itself is synchronous, but SceneInfo.Save embeds a thumbnail
+        // rendered from the live cameras: the viewport transform is only applied in
+        // LateUpdate, and a character added in the same dispatcher drain has not been
+        // posed by its Animator yet (OCIChar.OnSavePreprocessing dereferences it with
+        // no guard). Waiting for the end of the frame is what Studio's own
+        // GameScreenShot.CaptureFunc does before capturing.
+        public static Task<JsonNode> SaveScene(MonoBehaviour host, string name, bool overwrite)
+        {
+            if (!StudioAdapter.IsStudioReady())
+                throw new StudioApiException(StudioApiException.StudioNotReady, "Studio NEO V2 scene is not loaded yet");
+            var target = StudioAdapter.ResolveSaveScenePath(name, overwrite, out var overwriting);
+
+            var tcs = new TaskCompletionSource<JsonNode>(TaskCreationOptions.RunContinuationsAsynchronously);
+            host.StartCoroutine(SaveCo(tcs, target, overwriting));
+            return tcs.Task;
+        }
+
+        private static IEnumerator SaveCo(TaskCompletionSource<JsonNode> tcs, string target, bool overwriting)
+        {
+            yield return new WaitForEndOfFrame();
+            try
+            {
+                tcs.TrySetResult(StudioAdapter.SaveScene(target, overwriting).ToJson());
+            }
+            catch (Exception e)
+            {
+                tcs.TrySetException(e);
+            }
+        }
+
         private static IEnumerator LoadCo(MonoBehaviour host, TaskCompletionSource<JsonNode> tcs, string path)
         {
             var failure = (string)null;

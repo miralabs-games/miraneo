@@ -116,6 +116,9 @@ namespace MiraStudio
                 Params.ReqInt(p, "id"),
                 Params.Expression(p)).ToJson());
             _server.RegisterAsync("studio_load_scene", p => SceneService.LoadScene(this, Params.ReqString(p, "path")), 180000);
+            _server.RegisterAsync("studio_save_scene", p => SceneService.SaveScene(this,
+                Params.OptString(p, "name"),
+                Params.OptBool(p, "overwrite") ?? false), 60000);
 
             _server.Start(_port.Value);
         }

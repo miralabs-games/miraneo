@@ -14,6 +14,7 @@ import setCharacterPose from "../../shared/schemas/studio_set_character_pose.jso
 import setCharacterAnime from "../../shared/schemas/studio_set_character_anime.json";
 import setCharacterExpression from "../../shared/schemas/studio_set_character_expression.json";
 import loadScene from "../../shared/schemas/studio_load_scene.json";
+import saveScene from "../../shared/schemas/studio_save_scene.json";
 import setCamera from "../../shared/schemas/studio_set_camera.json";
 import createObject from "../../shared/schemas/studio_create_object.json";
 import createLight from "../../shared/schemas/studio_create_light.json";
@@ -56,6 +57,7 @@ export const TOOLS: ToolDef[] = [
   def("studio_list_character_cards", listCharacterCards, 240000),
   def("studio_list_poses", listPoses, 240000),
   def("studio_load_scene", loadScene, 240000),
+  def("studio_save_scene", saveScene, 90000),
   def("studio_set_camera", setCamera, 15000),
   def("studio_create_object", createObject, 90000),
   def("studio_create_light", createLight, 90000),

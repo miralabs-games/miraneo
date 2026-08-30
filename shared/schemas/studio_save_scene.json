@@ -1,0 +1,32 @@
+{
+  "description": "Save the current workspace as a Studio scene under UserData/Studio/scene, thumbnail included, so it can be reopened later with studio_load_scene. This is the only way to make anything built with the other write tools persist. Non-destructive to the live scene: nothing is unloaded and the undo stack is left intact. Refuses to replace an existing scene unless overwrite is true.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "description": "file name, or a forward-slash relative path, under the scene folder (e.g. 'agent/run17'). The .png extension is added when missing. Must stay inside the scene folder. Omitted: Studio's own timestamped name, which never collides." },
+      "overwrite": { "type": "boolean", "description": "replace the file if it already exists (default false)" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "path": { "type": "string", "description": "absolute path written" },
+      "relative_path": { "type": "string", "description": "path relative to the scene folder — the value to hand back to studio_load_scene" },
+      "bytes": { "type": "integer", "description": "size of the written file" },
+      "objects": { "type": "integer", "description": "number of objects serialised into the scene" },
+      "overwritten": { "type": "boolean", "description": "true if an existing file was replaced" },
+      "thumbnail": {
+        "type": "object",
+        "description": "size of the preview image embedded at the head of the file (fixed by Studio)",
+        "properties": {
+          "width": { "type": "integer" },
+          "height": { "type": "integer" }
+        },
+        "required": ["width", "height"]
+      },
+      "scene": { "type": "object", "description": "same shape as studio_get_scene, as saved" }
+    },
+    "required": ["path", "relative_path", "bytes", "objects", "overwritten", "thumbnail", "scene"]
+  }
+}
