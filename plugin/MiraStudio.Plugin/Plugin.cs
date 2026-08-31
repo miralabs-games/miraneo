@@ -143,6 +143,8 @@ namespace MiraStudio
                 Params.OptString(p, "name"),
                 Params.OptBool(p, "overwrite") ?? false), 60000);
 
+            _server.RegisterBatch("studio_execute_batch", 32);
+
             _server.Start(_port.Value);
         }
 

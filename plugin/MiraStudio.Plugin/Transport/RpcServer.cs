@@ -55,6 +55,97 @@ namespace MiraStudio.Transport
             };
         }
 
+        // Deliberately not routed through the dispatcher, unlike Register: every step
+        // marshals itself, so running this loop inside Drain() would have the main
+        // thread waiting on a queue only it can drain. The loop stays on the HTTP
+        // worker thread and blocks there instead.
+        public void RegisterBatch(string name, int maxSteps, int timeoutMs = 300000)
+        {
+            _methods[name] = new Method
+            {
+                TimeoutMs = timeoutMs,
+                Invoke = p => Task.Run(() => RunBatch(name, p, maxSteps)),
+            };
+        }
+
+        private JsonNode RunBatch(string self, JsonObject p, int maxSteps)
+        {
+            var steps = p.Get("steps") as JsonArray;
+            if (steps == null || steps.Count == 0)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "parameter 'steps' must be a non-empty array of {method, params}");
+            if (steps.Count > maxSteps)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "a batch takes at most " + maxSteps + " steps, got " + steps.Count);
+
+            // Nothing runs until every step is known to be callable: a batch has no
+            // rollback, so a typo in the last step must not leave the first ones applied.
+            var names = new string[steps.Count];
+            var args = new JsonObject[steps.Count];
+            for (var i = 0; i < steps.Count; i++)
+            {
+                var step = steps[i] as JsonObject;
+                if (step == null)
+                    throw new StudioApiException(StudioApiException.InvalidParams, "step " + i + " must be an object {method, params}");
+                var method = step.GetString("method");
+                if (string.IsNullOrEmpty(method))
+                    throw new StudioApiException(StudioApiException.InvalidParams, "step " + i + " is missing 'method'");
+                if (method == self)
+                    throw new StudioApiException(StudioApiException.InvalidParams, "step " + i + ": batches cannot be nested");
+                if (!_methods.ContainsKey(method))
+                    throw new StudioApiException(StudioApiException.InvalidParams, "step " + i + ": unknown method '" + method + "'");
+                // A screenshot returns its image as base64 in the JSON body; inside a
+                // batch it would be dumped as text no client can render.
+                if (method == "studio_screenshot")
+                    throw new StudioApiException(StudioApiException.InvalidParams,
+                        "step " + i + ": studio_screenshot cannot run in a batch, call it on its own so the image comes back as an image");
+                var prm = step.Get("params");
+                if (prm != null && !(prm is JsonNull) && !(prm is JsonObject))
+                    throw new StudioApiException(StudioApiException.InvalidParams, "step " + i + ": 'params' must be an object");
+                names[i] = method;
+                args[i] = prm as JsonObject ?? new JsonObject();
+            }
+
+            var results = new JsonArray();
+            for (var i = 0; i < names.Length; i++)
+            {
+                var method = _methods[names[i]];
+                JsonNode result;
+                try
+                {
+                    var task = method.Invoke(args[i]);
+                    if (!task.Wait(method.TimeoutMs))
+                        throw new TimeoutException("operation timed out after " + method.TimeoutMs + " ms");
+                    result = task.Result;
+                }
+                catch (Exception e)
+                {
+                    var inner = Unwrap(e);
+                    var api = inner as StudioApiException;
+                    var code = api != null ? api.Code : inner is TimeoutException ? -32002 : -32603;
+                    _log.LogWarning("MiraStudio batch stopped at step " + i + " (" + names[i] + "): " + inner.Message);
+                    return new JsonObject()
+                        .Add("ok", false)
+                        .Add("executed", i)
+                        .Add("stopped_at", i)
+                        .Add("error", new JsonObject()
+                            .Add("step", i)
+                            .Add("method", names[i])
+                            .Add("code", code)
+                            .Add("message", inner.Message))
+                        .Add("steps", results);
+                }
+                results.Add(new JsonObject().Add("step", i).Add("method", names[i]).Add("result", result));
+            }
+
+            return new JsonObject()
+                .Add("ok", true)
+                .Add("executed", names.Length)
+                .Add("stopped_at", JsonNull.Instance)
+                .Add("error", JsonNull.Instance)
+                .Add("steps", results);
+        }
+
         public bool Start(int port)
         {
             var prefix = "http://localhost:" + port + "/";

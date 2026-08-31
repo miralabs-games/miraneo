@@ -28,6 +28,7 @@ import createLight from "../../shared/schemas/studio_create_light.json";
 import setLight from "../../shared/schemas/studio_set_light.json";
 import setObjectTransform from "../../shared/schemas/studio_set_object_transform.json";
 import deleteObject from "../../shared/schemas/studio_delete_object.json";
+import executeBatch from "../../shared/schemas/studio_execute_batch.json";
 
 interface ToolDef {
   name: string;
@@ -82,6 +83,7 @@ export const TOOLS: ToolDef[] = [
   def("studio_set_character_bone", setCharacterBone, 15000),
   def("studio_set_character_ik", setCharacterIk, 15000),
   def("studio_attach_object", attachObject, 15000),
+  def("studio_execute_batch", executeBatch, 300000),
 ];
 
 const bridge = new MiraBridge();

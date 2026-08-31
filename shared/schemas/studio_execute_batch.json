@@ -1,0 +1,55 @@
+{
+  "description": "Run several MiraStudio tools in order, in one call. Use it when the steps are already decided and none of them needs a decision based on the previous one — building a scene, posing a whole limb, spawning and placing a set of props. It saves turns, not milliseconds: each step still costs the same inside Studio. **There is no rollback.** Every step is validated up front (unknown method, malformed step, nesting, screenshot) and the batch is refused as a whole if any step is unusable, but once execution starts a failing step stops the batch and leaves the earlier ones applied — Studio's undo stack has no notion of a transaction, and several tools clear it outright. So the result is always returned, never an error: read 'ok', and on failure 'stopped_at' and 'error' tell you exactly how far it got. Prefer the multi-entry tools (studio_set_character_bone, studio_set_character_ik) over a batch of single writes: they apply as one undo step, a batch does not.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "steps": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 32,
+        "description": "the calls to run, in order. Any MiraStudio tool except studio_screenshot (its image would come back as unusable base64 text) and studio_execute_batch itself",
+        "items": {
+          "type": "object",
+          "properties": {
+            "method": { "type": "string", "description": "tool name, e.g. 'studio_create_object'" },
+            "params": { "type": "object", "description": "that tool's arguments; omit for a tool that takes none" }
+          },
+          "required": ["method"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["steps"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean", "description": "every step ran" },
+      "executed": { "type": "integer", "description": "how many steps ran; on failure this is also the index of the step that failed" },
+      "stopped_at": { "type": ["integer", "null"], "description": "index of the failing step, null when 'ok'" },
+      "error": {
+        "type": ["object", "null"],
+        "description": "why the batch stopped; the steps before it are applied and stay applied",
+        "properties": {
+          "step": { "type": "integer" },
+          "method": { "type": "string" },
+          "code": { "type": "integer", "description": "same codes as a direct call: -32602 invalid params, -32000 studio not ready, -32001 operation failed, -32002 timeout, -32003 not found" },
+          "message": { "type": "string" }
+        }
+      },
+      "steps": {
+        "type": "array",
+        "description": "one entry per step that ran, in order",
+        "items": {
+          "type": "object",
+          "properties": {
+            "step": { "type": "integer" },
+            "method": { "type": "string" },
+            "result": { "description": "exactly what the tool would have returned on its own" }
+          }
+        }
+      }
+    }
+  }
+}

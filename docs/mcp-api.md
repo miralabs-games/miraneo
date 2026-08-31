@@ -42,6 +42,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_set_character_bone` | Rotate FK bones, several at a time | absolute euler degrees; one call = one undo step |
 | `studio_set_character_ik` | Move (and rotate, on hands and feet) IK targets, several at a time | absolute offsets; one call = one undo step |
 | `studio_attach_object` | Attach an object to a character bone, an item or a folder — or detach it | omit `parent_id` to detach; **not** undoable and clears the undo stack |
+| `studio_execute_batch` | Run up to 32 tools in order in one call | validated as a whole before anything runs, but **no rollback** once it starts |
 
 Every write tool takes **absolute** values and applies only the fields present, so repeating a call is idempotent. Item/light creation, transform edits and the anime playback settings are pushed onto Studio's native `UndoRedoManager`, so they can be undone from the Studio UI; deletion and character creation cannot (Studio NEO V2 has neither a delete command nor an add-character command, and clears the stack itself on the latter). The remaining character writes — pose, clip load, face, hands — have no command in Studio either, but unlike deletion they leave the stack usable, so they do not clear it.
 
@@ -67,6 +68,10 @@ Bone names are the rig's own transform names (`cf_J_ArmUp00_L`, `cf_J_Hand_Thumb
 
 **Saving does not disturb the live scene.** `studio_save_scene` is the only write tool that changes nothing in the workspace: no object is touched, the undo stack is left intact, and the viewport is unchanged. Its thumbnail is rendered from the cameras as they are at save time, so anything visible in `studio_screenshot` — including selection gizmos and IK/FK handles — lands in the preview. The tool waits for the end of the frame first, so a save issued right after `studio_set_camera` or `studio_create_character` still captures the new state.
 
+**Batching saves turns, not milliseconds.** A call costs about a millisecond of loopback plus one frame, so `studio_execute_batch` is worth reaching for when it removes LLM round-trips — a scene to build, a limb to pose, props to spawn and place — not when it removes latency. It buys no atomicity: every step is validated before any of them runs (unknown method, malformed step, nesting, `studio_screenshot`) and an unusable batch is refused whole, but once execution starts a failing step stops the batch and everything before it stays applied. Studio has no transaction, `UndoRedoManager.Do` pushes its command *before* executing it, and several tools clear the stack outright, so there is nothing to roll back to. The tool therefore always returns a result rather than an RPC error: `ok`, `executed`, `stopped_at` and `error` say exactly how far it got, and `steps` carries each result as the tool would have returned it alone.
+
+Two tools already batch internally and should be preferred over a batch of single writes: `studio_set_character_bone` and `studio_set_character_ik` take several entries and push one `GuideCommand` for the lot, so they apply as a single undo step. A batch of individual calls does not.
+
 ## Wire protocol (plugin side)
 
 - `POST /rpc` — JSON-RPC 2.0, method names identical to the MCP tool names, `params` as object.
@@ -89,4 +94,4 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-`execute_batch`. Left aside for now: clothes (sibling slots are coupled, top↔bottom and inner_t↔inner_b) and `siru` (read-back is a frame late, and a state above 2 throws inside `Manager.Character.Update` later).
+Outfits and Timeline. Left aside for now: clothes (sibling slots are coupled, top↔bottom and inner_t↔inner_b) and `siru` (read-back is a frame late, and a state above 2 throws inside `Manager.Character.Update` later).
