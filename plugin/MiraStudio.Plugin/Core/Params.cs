@@ -82,6 +82,13 @@ namespace MiraStudio.Core
             return (float)n.Value;
         }
 
+        public static bool ReqBool(JsonObject p, string key)
+        {
+            var b = p.Get(key) as JsonBool;
+            if (b == null) throw Invalid(key, "a boolean");
+            return b.Value;
+        }
+
         public static bool? OptBool(JsonObject p, string key)
         {
             var node = p.Get(key);

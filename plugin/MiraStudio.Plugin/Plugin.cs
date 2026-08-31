@@ -117,6 +117,19 @@ namespace MiraStudio
                 Params.Transform(p)).ToJson());
             _server.Register("studio_delete_object", p => new JsonObject()
                 .Add("deleted", _service.DeleteObject(Params.ReqInt(p, "id"))));
+            _server.Register("studio_set_object_visible", p => _service.SetObjectVisible(
+                Params.ReqInt(p, "id"),
+                Params.ReqBool(p, "visible")).ToJson());
+            _server.Register("studio_rename_object", p => _service.RenameObject(
+                Params.ReqInt(p, "id"),
+                Params.ReqString(p, "name")).ToJson());
+            _server.Register("studio_create_folder", p => _service.CreateFolder(
+                Params.OptString(p, "name"),
+                Params.Transform(p)).ToJson());
+            // Duplicating a character re-imports its whole card through the scene
+            // serialiser, so this is the one workspace tool that is not instant.
+            _server.Register("studio_duplicate_object", p => _service.DuplicateObject(
+                Params.IntList(p, "id")).ToJson(), 60000);
             _server.Register("studio_create_character", p => _service.CreateCharacter(
                 Params.ReqString(p, "card"),
                 Params.OptString(p, "sex"),

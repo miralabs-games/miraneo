@@ -1,0 +1,15 @@
+{
+  "description": "Create an empty folder in the workspace tree, to group scene objects. A folder holds no asset: it is a named transform, so moving or rotating it moves everything attached under it (use studio_attach_object to put objects in it). Optionally names and places it; otherwise Studio's default name and spawn position are used. Studio has no undo command for adding a folder, so this **clears the undo stack**, as the workspace button itself does. Returns the created folder, including its id.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "description": "name of the folder; omitted, Studio's default is used" },
+      "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+      "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "euler degrees" },
+      "scale": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "1,1,1 is the default size" }
+    },
+    "required": [],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "same shape as one entry of studio_list_objects" }
+}

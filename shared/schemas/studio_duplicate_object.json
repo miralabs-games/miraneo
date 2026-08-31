@@ -1,0 +1,19 @@
+{
+  "description": "Duplicate one or more scene objects, with everything attached under them. Each copy keeps the pose, outfit, transform, colours and third-party plugin data of its source, and lands under the same parent. Studio allocates fresh ids, so the result pairs each copy with the 'source_id' it came from. Route points and the fixed sub-nodes of a character or a route cannot be duplicated on their own and are refused. Not undoable. Note that plugin data restored on the copies (node constraints in particular) lands a few frames later, so re-read it rather than querying it in the same batch.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": ["integer", "array"],
+        "items": { "type": "integer" },
+        "description": "id of the object to duplicate, or an array of ids to duplicate in one go, from studio_list_objects"
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "{ count, objects } where each entry is 'source_id' plus one entry of studio_list_objects describing the copy"
+  }
+}

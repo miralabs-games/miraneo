@@ -32,6 +32,10 @@ import createLight from "../../shared/schemas/studio_create_light.json";
 import setLight from "../../shared/schemas/studio_set_light.json";
 import setObjectTransform from "../../shared/schemas/studio_set_object_transform.json";
 import deleteObject from "../../shared/schemas/studio_delete_object.json";
+import setObjectVisible from "../../shared/schemas/studio_set_object_visible.json";
+import renameObject from "../../shared/schemas/studio_rename_object.json";
+import createFolder from "../../shared/schemas/studio_create_folder.json";
+import duplicateObject from "../../shared/schemas/studio_duplicate_object.json";
 import listOverlays from "../../shared/schemas/studio_list_overlays.json";
 import setMap from "../../shared/schemas/studio_set_map.json";
 import setSceneLighting from "../../shared/schemas/studio_set_scene_lighting.json";
@@ -99,6 +103,10 @@ export const TOOLS: ToolDef[] = [
   def("studio_set_light", setLight, 15000),
   def("studio_set_object_transform", setObjectTransform, 15000),
   def("studio_delete_object", deleteObject, 15000),
+  def("studio_set_object_visible", setObjectVisible, 15000),
+  def("studio_rename_object", renameObject, 15000),
+  def("studio_create_folder", createFolder, 15000),
+  def("studio_duplicate_object", duplicateObject, 90000),
   def("studio_create_character", createCharacter, 180000),
   def("studio_set_character_pose", setCharacterPose, 90000),
   def("studio_set_character_anime", setCharacterAnime, 90000),

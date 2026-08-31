@@ -1,0 +1,13 @@
+{
+  "description": "Rename a scene object in the workspace tree. **Only folders, in-scene cameras and routes can be renamed**: they are the three kinds that store a name of their own in the save file. A character, item or light is refused — its workspace label is rebuilt from its card or from the catalogue every time the scene loads, so a rename would be lost. Not undoable, but it does not clear Studio's undo stack. Read back with the 'name' field of studio_list_objects.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "id of the folder, camera or route, from studio_list_objects" },
+      "name": { "type": "string", "description": "the new name; any text, including non-ASCII" }
+    },
+    "required": ["id", "name"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the object, same shape as one entry of studio_list_objects — 'name' confirms the result" }
+}

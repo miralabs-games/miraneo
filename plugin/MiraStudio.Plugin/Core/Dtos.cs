@@ -751,6 +751,37 @@ namespace MiraStudio.Core
             .Add("light", Light != null ? Light.ToJson() : JsonNull.Instance);
     }
 
+    // A copy is an ObjectDto plus the id it was copied from: Studio allocates new
+    // keys during the import, so nothing else ties the two together.
+    public sealed class DuplicatedObjectDto
+    {
+        public int SourceId;
+        public ObjectDto Object;
+
+        public JsonNode ToJson()
+        {
+            var node = new JsonObject().Add("source_id", SourceId);
+            var obj = Object != null ? Object.ToJson() as JsonObject : null;
+            if (obj != null)
+                foreach (var key in obj.Keys) node.Add(key, obj.Get(key));
+            return node;
+        }
+    }
+
+    public sealed class DuplicateDto
+    {
+        public int Count;
+        public System.Collections.Generic.List<DuplicatedObjectDto> Objects;
+
+        public JsonNode ToJson()
+        {
+            var arr = new JsonArray();
+            if (Objects != null)
+                foreach (var o in Objects) arr.Add(o.ToJson());
+            return new JsonObject().Add("count", Count).Add("objects", arr);
+        }
+    }
+
     public sealed class CameraDto
     {
         public Vec3 TargetPos, Angle, WorldPos, WorldRot;

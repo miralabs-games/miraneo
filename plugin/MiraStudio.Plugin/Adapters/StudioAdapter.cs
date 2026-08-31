@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using MiraStudio.Core;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -999,6 +1000,146 @@ namespace MiraStudio.Adapters
             // so the undo stack would replay against destroyed objects.
             Singleton<SNeo.UndoRedoManager>.Instance.Clear();
             return before - studio.dicObjectCtrl.Count;
+        }
+
+        public static ObjectDto SetObjectVisible(int id, bool visible)
+        {
+            var oci = RequireObject(id);
+            var node = oci.treeNodeObject;
+            if (node == null)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "object " + id + " has no workspace node and has no visibility of its own");
+
+            // OCILight.OnVisible is empty and AddObjectLight never turns the toggle
+            // on, so the flag would be stored and inert; a route point gets
+            // enableVisible = false and follows its route instead. enableVisible is a
+            // set-only property, so the guard cannot read it back and goes by kind.
+            if (oci is SNeo.OCILight)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "object " + id + " is a light: Studio has no visibility toggle for lights, use 'enabled' in studio_set_light instead");
+            if (oci is SNeo.OCIRoutePoint)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "object " + id + " is a route point: its visibility follows its route, set it on the route instead");
+
+            // No ICommand replays visibility, so this leaves the undo stack alone.
+            // objectInfo.visible is only resynced from the node in OnSavePreprocessing,
+            // which every save path runs, so the flag still persists.
+            node.visible = visible;
+            return ToDto(id, oci);
+        }
+
+        public static ObjectDto RenameObject(int id, string name)
+        {
+            var studio = Require();
+            var oci = RequireObject(id);
+
+            // Only these three kinds own a name: OIFolderInfo/OICameraInfo/OIRouteInfo
+            // all serialise one, and their OCI setter writes both the info and the tree
+            // label. For every other kind TreeNodeObject.textName is a UI label alone,
+            // rebuilt from the catalogue or the card on load, so writing it would lie.
+            var folder = oci as SNeo.OCIFolder;
+            var camera = oci as SNeo.OCICamera;
+            var route = oci as SNeo.OCIRoute;
+            if (folder == null && camera == null && route == null)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "object " + id + " is a '" + KindOf(oci) + "': only folders, in-scene cameras and routes have a name of their own, "
+                    + "the workspace label of any other kind is not saved");
+
+            if (folder != null) folder.name = name;
+            if (route != null)
+            {
+                route.name = name;
+                // The route panel caches the label, exactly as Studio.AddRoute does.
+                if (studio.routeControl != null && studio.routeControl.visible)
+                    studio.routeControl.Init();
+            }
+            if (camera != null)
+            {
+                camera.name = name;
+                // The camera dropdown caches its labels and the header shows the active
+                // camera's name; the setter rebuilds neither. Init() re-reads the names
+                // and restores the selection, and ChangeCamera on the already-active
+                // camera is a no-op that re-stamps the header.
+                if (studio.cameraSelector != null) studio.cameraSelector.Init();
+                if (ReferenceEquals(studio.ociCamera, camera)) studio.ChangeCamera(camera, true);
+            }
+            return ToDto(id, oci);
+        }
+
+        public static ObjectDto CreateFolder(string name, TransformPatch transform)
+        {
+            Require();
+            var oci = SNeo.AddObjectFolder.Add();
+            if (oci == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "Studio failed to create the folder");
+
+            // AddObjectCommand only defines AddItemCommand and AddLightCommand, which
+            // is why Studio.AddFolder clears the stack after this call too.
+            Singleton<SNeo.UndoRedoManager>.Instance.Clear();
+            if (!string.IsNullOrEmpty(name)) oci.name = name;
+            ApplyTransform(oci, transform);
+            return ToDto(oci.objectInfo.dicKey, oci);
+        }
+
+        public static DuplicateDto DuplicateObject(List<int> ids)
+        {
+            var studio = Require();
+            var nodes = new List<SNeo.TreeNodeObject>(ids.Count);
+            var seen = new HashSet<int>();
+            foreach (var id in ids)
+            {
+                if (!seen.Add(id)) continue;
+                var oci = RequireObject(id);
+                var node = oci.treeNodeObject;
+                if (node == null)
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "object " + id + " has no workspace node and cannot be duplicated");
+                // What gates the workspace Duplicate button in WorkspaceCtrl.
+                if (!node.enableCopy)
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "object " + id + " (" + KindOf(oci) + ") cannot be duplicated");
+                nodes.Add(node);
+            }
+
+            // Studio.Duplicate reads treeNodeCtrl.selectNodes, which is just
+            // hashSelectNode.ToArray(). Swapping that field is the only way in that
+            // does not move a gizmo: SelectSingle drives GuideObjectManager and node
+            // colours, and the selectNode setter is worse still — SetSelectNode reads
+            // Input.GetKey(P/O/X) and can reparent or copy a transform instead of
+            // selecting. Everything downstream is synchronous, AddObjectAssist.LoadChild
+            // has no coroutine path, so the borrow lasts a single call.
+            var ctrl = studio.treeNodeCtrl;
+            var field = typeof(SNeo.TreeNodeCtrl).GetField("hashSelectNode", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field == null)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "TreeNodeCtrl.hashSelectNode is missing: this build of Studio NEO V2 cannot be driven for duplication");
+            var saved = field.GetValue(ctrl);
+
+            field.SetValue(ctrl, new HashSet<SNeo.TreeNodeObject>(nodes));
+            try { studio.Duplicate(); }
+            finally { field.SetValue(ctrl, saved); }
+
+            // Import fills dicImport with the new roots and dicChangeKey maps each new
+            // key back to the one it was copied from. Both are public, so the tool can
+            // name the copies instead of leaving the agent to diff the object list.
+            var dto = new DuplicateDto { Objects = new List<DuplicatedObjectDto>() };
+            var scene = studio.sceneInfo;
+            if (scene != null && scene.dicImport != null)
+            {
+                foreach (var kv in scene.dicImport)
+                {
+                    var copy = SNeo.Studio.GetCtrlInfo(kv.Key);
+                    if (copy == null) continue;
+                    int source;
+                    if (scene.dicChangeKey == null || !scene.dicChangeKey.TryGetValue(kv.Key, out source)) source = -1;
+                    dto.Objects.Add(new DuplicatedObjectDto { SourceId = source, Object = ToDto(kv.Key, copy) });
+                }
+            }
+            dto.Count = dto.Objects.Count;
+            if (dto.Count == 0)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "Studio duplicated nothing (the scene copy came back empty)");
+            return dto;
         }
 
         public static List<AttachPointDto> ListAttachPoints(int id)
@@ -2534,6 +2675,7 @@ namespace MiraStudio.Adapters
             if (oci is SNeo.OCILight) return "light";
             if (oci is SNeo.OCIFolder) return "folder";
             if (oci is SNeo.OCIRoute) return "route";
+            if (oci is SNeo.OCIRoutePoint) return "route_point";
             if (oci is SNeo.OCICamera) return "camera";
             return "unknown";
         }

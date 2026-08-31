@@ -1,0 +1,13 @@
+{
+  "description": "Show or hide a scene object without deleting it — the workspace eye toggle. Hiding a parent hides everything under it while leaving each child's own flag untouched, so re-showing the parent restores the branch as it was. The flag is saved with the scene. **Refused for lights** (Studio has no visibility toggle for them; use 'enabled' in studio_set_light) and for route points (their visibility follows their route). Not undoable, but unlike the other write tools it does not clear Studio's undo stack. Read back with the 'visible' field of studio_list_objects.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "id of the object, from studio_list_objects" },
+      "visible": { "type": "boolean", "description": "true to show, false to hide" }
+    },
+    "required": ["id", "visible"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the object, same shape as one entry of studio_list_objects — 'visible' confirms the result" }
+}

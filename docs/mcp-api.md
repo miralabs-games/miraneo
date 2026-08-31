@@ -11,7 +11,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_get_info` | Runtime info (versions, `studio_loaded`, object count, `plugins`) | works before the Studio scene is ready; `plugins.timeline` says whether the timeline tools will work |
 | `studio_get_scene` | Scene summary: object counts per kind, background/frame, plus the map, the scene light and the full post-processing state | errors with `-32000` until Studio is ready; the read-back for all four environment write tools |
 | `studio_list_characters` | All characters: id, name, card full name, sex, visible, transform, anime, kinematic, face, hands, expression | the read-back tool for every character write |
-| `studio_list_objects` | All scene objects: id, kind, name, visible, parent_id, transform, light state | `parent_id` set for attached objects |
+| `studio_list_objects` | All scene objects: id, kind, name, visible, parent_id, transform, light state | `parent_id` set for attached objects; the read-back for the four workspace write tools |
 | `studio_get_camera` | Viewport camera: target pos, angle, distance, fov, world pos/rot | first four round-trip into `studio_set_camera` |
 | `studio_screenshot` | Screenshot of the Studio window, returned as MCP image content | `format` jpg (default) or png, `quality` 1–100 |
 | `studio_search_catalog` | Search spawnable/loadable assets — `catalog: item\|light\|anime` | **required** before creating anything: ids cannot be guessed |
@@ -36,6 +36,10 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_set_light` | Change an existing light's settings | partial + absolute |
 | `studio_set_object_transform` | Move/rotate/scale any object by id | partial + absolute → idempotent; undoable in Studio |
 | `studio_delete_object` | Delete an object and its children | **not** undoable, and clears Studio's undo stack |
+| `studio_set_object_visible` | Show or hide an object and its branch | refused on lights and route points; not undoable but leaves the undo stack intact |
+| `studio_rename_object` | Rename a folder, an in-scene camera or a route | refused on every other kind — their label is not saved |
+| `studio_create_folder` | Add an empty folder to group objects | optional name + transform; **not** undoable, and clears the undo stack |
+| `studio_duplicate_object` | Copy one or more objects with everything under them | returns each copy with the `source_id` it came from; **not** undoable |
 | `studio_create_character` | Add a character from a card path | **not** undoable, and clears the undo stack — same as Studio's own Add menu |
 | `studio_set_character_pose` | Apply a pose file: anime + all IK/FK targets + expression flags | sex-checked against the character |
 | `studio_set_character_anime` | Base animation `(group, category, no[, normalized_time])` and/or playback: `speed`, `pattern`, `option_param1|2` | ids from `studio_search_catalog` with `catalog='anime'`; the playback fields are undoable |
@@ -90,6 +94,24 @@ returning an error.
 **Attaching changes what a transform means.** While an object is attached, its `transform` — both what `studio_list_objects` reports and what `studio_set_object_transform` writes — is in the parent's local space, not world space. `pos: [0,0,0]` puts the object exactly on the bone. Detaching converts back to world space. Because the conversion happens on the object's stored coordinates, every transform still on Studio's undo stack would be replayed in the wrong space, so `studio_attach_object` clears the stack.
 
 Attach points are the same 54 anchors for every character, but the bone behind one depends on the rig, so an unusable point looks identical to a usable one until the object silently ends up at the scene root. `studio_list_attach_points` reports `available` per point and `studio_attach_object` refuses the rest. A point takes either its index or its name (`44` or `"N_Hand_L"`). Objects can also be parented to items and folders, with no attach point.
+
+**The workspace tree is writable, within Studio's own limits.** `studio_list_objects` reports `name` and
+`visible` for every object, and the four workspace tools are what write them back. Hiding is per branch: hiding a
+parent hides everything under it while each child keeps its own flag, so re-showing the parent restores the branch
+as it was. The flag only persists because every save path resyncs it from the tree node first — the value stored on
+the object itself is stale between saves, which is why `visible` is read from the node and not from the save data.
+Lights are refused rather than silently ignored: Studio never gives a light a visibility toggle and its handler is
+empty, so the flag would be stored and inert (use `enabled` in `studio_set_light`). Route points are refused for the
+same reason — theirs follows their route.
+
+Renaming is narrower still: only folders, in-scene cameras and routes store a name of their own in the save file.
+Every other kind takes its workspace label from its card or from the asset catalog on load, so writing it would look
+right until the next reload. Duplicating goes through Studio's own scene serialiser, which means a copy carries the
+pose, outfit, colours **and** third-party plugin data of its source, lands under the same parent, and comes back
+paired with the `source_id` it was made from — Studio allocates fresh ids, so nothing else ties the two together.
+Restored plugin data (node constraints in particular) arrives a few frames later, so re-read it rather than
+querying it in the same batch. Adding a folder clears the undo stack, exactly as Studio's own button does; hiding
+and renaming touch nothing that the undo stack replays and leave it alone.
 
 **Anime playback.** `speed`, `pattern` and `option_param1|2` adjust the clip that is already loaded and can be sent without `(group, category, no)`. `pattern` and the option params reach the animator only for clips that declare them — `anime.is_anime_motion` and `anime.is_h_anime` say whether they will, and otherwise the value is stored but changes nothing. The ranges are Studio's own panel clamps (`speed` 0..3, the rest 0..1) so that a saved scene stays reproducible from the UI.
 

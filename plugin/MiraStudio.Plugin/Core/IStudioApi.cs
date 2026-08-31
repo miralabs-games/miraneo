@@ -28,6 +28,10 @@ namespace MiraStudio.Core
         ObjectDto SetLight(int id, LightPatch light);
         ObjectDto SetObjectTransform(int id, TransformPatch transform);
         int DeleteObject(int id);
+        ObjectDto SetObjectVisible(int id, bool visible);
+        ObjectDto RenameObject(int id, string name);
+        ObjectDto CreateFolder(string name, TransformPatch transform);
+        DuplicateDto DuplicateObject(List<int> ids);
         ObjectDto CreateCharacter(string card, string sex, TransformPatch transform);
         CharacterDto SetCharacterPose(int id, string path);
         CharacterDto SetCharacterAnime(int id, AnimePatch patch);

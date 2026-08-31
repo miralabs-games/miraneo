@@ -34,6 +34,10 @@ namespace MiraStudio.Services
         public ObjectDto SetLight(int id, LightPatch light) => StudioAdapter.SetLight(id, light);
         public ObjectDto SetObjectTransform(int id, TransformPatch transform) => StudioAdapter.SetObjectTransform(id, transform);
         public int DeleteObject(int id) => StudioAdapter.DeleteObject(id);
+        public ObjectDto SetObjectVisible(int id, bool visible) => StudioAdapter.SetObjectVisible(id, visible);
+        public ObjectDto RenameObject(int id, string name) => StudioAdapter.RenameObject(id, name);
+        public ObjectDto CreateFolder(string name, TransformPatch transform) => StudioAdapter.CreateFolder(name, transform);
+        public DuplicateDto DuplicateObject(List<int> ids) => StudioAdapter.DuplicateObject(ids);
         public ObjectDto CreateCharacter(string card, string sex, TransformPatch transform) => StudioAdapter.CreateCharacter(card, sex, transform);
         public CharacterDto SetCharacterPose(int id, string path) => StudioAdapter.SetCharacterPose(id, path);
         public CharacterDto SetCharacterAnime(int id, AnimePatch patch) => StudioAdapter.SetCharacterAnime(id, patch);
