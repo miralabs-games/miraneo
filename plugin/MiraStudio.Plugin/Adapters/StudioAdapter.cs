@@ -55,7 +55,11 @@ namespace MiraStudio.Adapters
             return dto;
         }
 
-        public static SceneSummaryDto GetScene()
+        public static SceneSummaryDto GetScene() => GetScene(true);
+
+        // withPostProcessing is off for the summary embedded in the load and save
+        // results: those describe what happened to the workspace, not its grading.
+        public static SceneSummaryDto GetScene(bool withPostProcessing)
         {
             var studio = Require();
             var dto = new SceneSummaryDto();
@@ -78,6 +82,9 @@ namespace MiraStudio.Adapters
                 }
             }
             catch { }
+            dto.Map = GetMap();
+            dto.Lighting = GetSceneLighting();
+            if (withPostProcessing) dto.PostProcessing = GetPostProcessing();
             return dto;
         }
 
@@ -202,9 +209,52 @@ namespace MiraStudio.Adapters
                     if (list.Count >= limit) return list;
                 }
             }
+            else if (catalog == "map")
+            {
+                foreach (var map in info.dicMapLoadInfo)
+                {
+                    var name = map.Value != null ? map.Value.name : null;
+                    if (!Matches(query, name, null, null)) continue;
+                    list.Add(new CatalogEntryDto { Catalog = "map", No = map.Key, Name = name });
+                    if (list.Count >= limit) return list;
+                }
+            }
+            // The three catalogs the screen-effect panel picks from. They are plain
+            // no → name lists like the lights, with no group or category.
+            else if (catalog == "color_grading")
+            {
+                foreach (var lut in info.dicColorGradingLoadInfo)
+                {
+                    var name = lut.Value != null ? lut.Value.name : null;
+                    if (!Matches(query, name, null, null)) continue;
+                    list.Add(new CatalogEntryDto { Catalog = "color_grading", No = lut.Key, Name = name });
+                    if (list.Count >= limit) return list;
+                }
+            }
+            else if (catalog == "reflection_probe")
+            {
+                foreach (var probe in info.dicReflectionProbeLoadInfo)
+                {
+                    var name = probe.Value != null ? probe.Value.name : null;
+                    if (!Matches(query, name, null, null)) continue;
+                    list.Add(new CatalogEntryDto { Catalog = "reflection_probe", No = probe.Key, Name = name });
+                    if (list.Count >= limit) return list;
+                }
+            }
+            else if (catalog == "sky")
+            {
+                foreach (var sky in info.dicSkyPatternInfo)
+                {
+                    var name = sky.Value != null ? sky.Value.name : null;
+                    if (!Matches(query, name, null, null)) continue;
+                    list.Add(new CatalogEntryDto { Catalog = "sky", No = sky.Key, Name = name });
+                    if (list.Count >= limit) return list;
+                }
+            }
             else
             {
-                throw new StudioApiException(StudioApiException.InvalidParams, "unknown catalog: " + catalog + " (expected 'item', 'light' or 'anime')");
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "unknown catalog: " + catalog + " (expected 'item', 'light', 'anime', 'map', 'color_grading', 'reflection_probe' or 'sky')");
             }
             return list;
         }
@@ -317,7 +367,7 @@ namespace MiraStudio.Adapters
                 Overwritten = overwriting,
                 ThumbnailWidth = ThumbnailWidth,
                 ThumbnailHeight = ThumbnailHeight,
-                Scene = GetScene(),
+                Scene = GetScene(false),
             };
         }
 
@@ -1078,6 +1128,552 @@ namespace MiraStudio.Adapters
             }
             return sb.ToString();
         }
+
+        // ---- Environment: map, scene lighting, overlays, post-processing ----
+
+        public static MapDto GetMap()
+        {
+            var studio = Require();
+            var dto = new MapDto { No = -1 };
+            var info = studio.sceneInfo != null ? studio.sceneInfo.mapInfo : null;
+            if (info != null)
+            {
+                dto.No = info.no;
+                dto.Name = MapName(info.no);
+                dto.Pos = V(info.ca.pos);
+                dto.Rot = V(info.ca.rot);
+                dto.Option = info.option;
+                dto.Light = info.light;
+            }
+            try
+            {
+                if (Singleton<SNeo.Map>.IsInstance())
+                {
+                    var map = Singleton<SNeo.Map>.Instance;
+                    dto.Loaded = map.MapRoot != null;
+                    // A map without optional objects or extra lights makes its two
+                    // toggles non-interactable in Studio's own panel.
+                    dto.OptionAvailable = map.IsOption;
+                    dto.LightAvailable = map.IsLight;
+                }
+            }
+            catch { }
+            return dto;
+        }
+
+        private static string MapName(int no)
+        {
+            var info = Singleton<SNeo.Info>.Instance;
+            SNeo.Info.MapLoadInfo entry;
+            return info != null && info.dicMapLoadInfo.TryGetValue(no, out entry) ? entry.name : null;
+        }
+
+        // Studio.AddMap starts its own coroutine and returns void, so the caller has
+        // to watch the scene for the change. mapInfo.no is not that signal: SetupMap
+        // writes it and resets mapInfo.ca even when the requested map is the one
+        // already loaded, so a transform applied too early would be wiped. onChangeMap
+        // is fired by SetupMap at the end and is the one thing that means "settled".
+        internal sealed class MapChange
+        {
+            public bool Started, Done;
+            public Action Handler;
+        }
+
+        public static MapChange BeginMapChange(MapPatch patch)
+        {
+            var studio = Require();
+            if (patch == null || patch.IsEmpty)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "nothing to change: pass at least one of 'no', 'pos', 'rot', 'option', 'light'");
+
+            var change = new MapChange();
+            if (!patch.No.HasValue) return change;
+
+            var no = patch.No.Value;
+            var info = Singleton<SNeo.Info>.Instance;
+            // Map.LoadMapCoroutine releases the map for an unknown no and SetupMap then
+            // stores it anyway, leaving the scene claiming a map it does not have.
+            if (no != -1 && (info == null || !info.dicMapLoadInfo.ContainsKey(no)))
+                throw new StudioApiException(StudioApiException.NotFound,
+                    "no map with no=" + no + " (use studio_search_catalog with catalog='map'; -1 removes the map)");
+
+            change.Started = true;
+            change.Handler = () => change.Done = true;
+            studio.onChangeMap += change.Handler;
+            try
+            {
+                studio.AddMap(no, false, false, true);
+            }
+            catch
+            {
+                studio.onChangeMap -= change.Handler;
+                throw;
+            }
+            return change;
+        }
+
+        public static bool MapChangeDone(MapChange change) => change == null || !change.Started || change.Done;
+
+        public static void EndMapChange(MapChange change)
+        {
+            if (change == null || !change.Started || change.Handler == null) return;
+            try { Singleton<SNeo.Studio>.Instance.onChangeMap -= change.Handler; }
+            catch { }
+            change.Handler = null;
+        }
+
+        public static MapDto CompleteMapChange(MapPatch patch, bool mapChanged)
+        {
+            var studio = Require();
+            var info = studio.sceneInfo != null ? studio.sceneInfo.mapInfo : null;
+            if (info == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "the scene has no map slot");
+
+            if (patch.Option.HasValue || patch.Light.HasValue)
+            {
+                var map = Singleton<SNeo.Map>.IsInstance() ? Singleton<SNeo.Map>.Instance : null;
+                if (patch.Option.HasValue)
+                {
+                    if (map == null || !map.IsOption)
+                        throw new StudioApiException(StudioApiException.InvalidParams,
+                            "the current map has no optional objects, so 'option' would be stored and change nothing (see map.option_available)");
+                    map.VisibleOption = patch.Option.Value;
+                }
+                if (patch.Light.HasValue)
+                {
+                    if (map == null || !map.IsLight)
+                        throw new StudioApiException(StudioApiException.InvalidParams,
+                            "the current map has no lights of its own, so 'light' would be stored and change nothing (see map.light_available)");
+                    map.VisibleLight = patch.Light.Value;
+                }
+            }
+
+            var oldPos = info.ca.pos;
+            var oldRot = info.ca.rot;
+            if (patch.Pos.HasValue) info.ca.pos = U(patch.Pos.Value);
+            if (patch.Rot.HasValue) info.ca.rot = U(patch.Rot.Value);
+
+            if (Singleton<SNeo.MapCtrl>.IsInstance()) Singleton<SNeo.MapCtrl>.Instance.Reflect();
+            if (studio.mapList != null) studio.mapList.UpdateInfo();
+
+            if (mapChanged)
+            {
+                // SetupMap resets mapInfo.ca with no command of its own, so every
+                // MapCommand already on the stack would replay against a transform
+                // that no longer means anything.
+                Singleton<SNeo.UndoRedoManager>.Instance.Clear();
+            }
+            else
+            {
+                // MapCtrl's own input fields work the same way round: the value is
+                // applied first and the command is pushed, not executed.
+                if (patch.Pos.HasValue && info.ca.pos != oldPos)
+                    Singleton<SNeo.UndoRedoManager>.Instance.Push(new SNeo.MapCommand.MoveEqualsCommand(
+                        new SNeo.MapCommand.EqualsInfo { oldValue = oldPos, newValue = info.ca.pos }));
+                if (patch.Rot.HasValue && info.ca.rot != oldRot)
+                    Singleton<SNeo.UndoRedoManager>.Instance.Push(new SNeo.MapCommand.RotationEqualsCommand(
+                        new SNeo.MapCommand.EqualsInfo { oldValue = oldRot, newValue = info.ca.rot }));
+            }
+            return GetMap();
+        }
+
+        public static SceneLightingDto GetSceneLighting()
+        {
+            var studio = Require();
+            try
+            {
+                var light = studio.sceneInfo != null ? studio.sceneInfo.charaLight : null;
+                if (light == null) return null;
+                return new SceneLightingDto
+                {
+                    Color = C(light.color),
+                    Intensity = light.intensity,
+                    Rot = new[] { light.rot[0], light.rot[1] },
+                    Shadow = light.shadow,
+                };
+            }
+            catch { return null; }
+        }
+
+        public static SceneLightingDto SetSceneLighting(SceneLightingPatch patch)
+        {
+            var studio = Require();
+            if (patch == null || patch.IsEmpty)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "nothing to change: pass at least one of 'color', 'intensity', 'rot', 'shadow'");
+            var light = studio.sceneInfo != null ? studio.sceneInfo.charaLight : null;
+            if (light == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "the scene has no chara light");
+
+            // CameraLightCtrl's own input fields clamp to these, so anything outside
+            // saves a scene the vanilla UI cannot reproduce.
+            RequireRange(patch.Intensity, 0.1f, 2f, "intensity");
+            if (patch.Rot != null)
+            {
+                RequireRange(patch.Rot[0], 0f, 359f, "rot[0]");
+                RequireRange(patch.Rot[1], 0f, 359f, "rot[1]");
+            }
+
+            if (patch.Color != null) light.color = new Color(patch.Color[0], patch.Color[1], patch.Color[2], patch.Color[3]);
+            if (patch.Intensity.HasValue) light.intensity = patch.Intensity.Value;
+            if (patch.Rot != null)
+            {
+                light.rot[0] = patch.Rot[0];
+                light.rot[1] = patch.Rot[1];
+            }
+            if (patch.Shadow.HasValue) light.shadow = patch.Shadow.Value;
+
+            ReflectSceneLighting();
+            return GetSceneLighting();
+        }
+
+        // CameraLightCtrl is the only thing in the assembly that pushes charaLight into
+        // the actual Light, and Studio never calls it outside the light panel's own
+        // Start/OnEnable — not even after loading a scene, which is why a loaded scene
+        // keeps the previous lighting until that panel is opened. Every write reflects.
+        public static void ReflectSceneLighting()
+        {
+            try
+            {
+                if (!IsStudioReady()) return;
+                var ctrl = Singleton<SNeo.Studio>.Instance.cameraLightCtrl;
+                if (ctrl != null) ctrl.Reflect();
+            }
+            catch { }
+        }
+
+        public static List<OverlayFileDto> ListOverlays(string kind, string query, int limit)
+        {
+            if (kind != null && kind != "background" && kind != "frame")
+                throw new StudioApiException(StudioApiException.InvalidParams, "parameter 'kind' must be 'background' or 'frame'");
+
+            var list = new List<OverlayFileDto>();
+            if (kind == null || kind == "background")
+            {
+                // BackgroundList reads both roots and keeps the root name in the value;
+                // BackgroundCtrl.Load resolves it against Studio.ApplicationPath.
+                AddOverlays(list, "background", DefaultData.Create(SNeo.BackgroundList.dirName),
+                    DefaultData.RootName + "/" + SNeo.BackgroundList.dirName + "/", "default", query, limit);
+                AddOverlays(list, "background", UserData.Create(SNeo.BackgroundList.dirName),
+                    UserData.RootName + "/" + SNeo.BackgroundList.dirName + "/", "user", query, limit);
+            }
+            // Frames are the other way round: FrameList stores a bare file name and
+            // FrameCtrl.Load prefixes UserData/frame itself.
+            if (kind == null || kind == "frame")
+                AddOverlays(list, "frame", UserData.Create(FrameDir), "", "user", query, limit);
+            return list;
+        }
+
+        private const string FrameDir = "frame";
+
+        private static void AddOverlays(List<OverlayFileDto> list, string kind, string root, string prefix, string source, string query, int limit)
+        {
+            if (list.Count >= limit || !Directory.Exists(root)) return;
+            foreach (var file in Directory.GetFiles(root, "*.png"))
+            {
+                var name = Path.GetFileNameWithoutExtension(file);
+                var value = prefix + Path.GetFileName(file);
+                if (!Matches(query, name, value)) continue;
+                list.Add(new OverlayFileDto { Kind = kind, Path = value, Name = name, Source = source });
+                if (list.Count >= limit) return;
+            }
+        }
+
+        public static OverlaysDto SetOverlay(OverlayPatch patch)
+        {
+            var studio = Require();
+            if (patch == null || patch.IsEmpty)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "nothing to change: pass 'background' and/or 'frame' (an empty string clears one)");
+
+            if (patch.Background != null)
+            {
+                // Load("") is the clear path: the file check fails, the mesh is hidden
+                // and sceneInfo.background is emptied — it returns false either way.
+                if (!BackgroundControl().Load(patch.Background) && patch.Background.Length > 0)
+                    throw new StudioApiException(StudioApiException.NotFound,
+                        "background image not found or unreadable: " + patch.Background + " (use studio_list_overlays)");
+            }
+            if (patch.Frame != null)
+            {
+                var frame = studio.frameCtrl;
+                if (frame == null)
+                    throw new StudioApiException(StudioApiException.OperationFailed, "the frame overlay is not available");
+                if (!frame.Load(patch.Frame) && patch.Frame.Length > 0)
+                    throw new StudioApiException(StudioApiException.NotFound,
+                        "frame image not found or unreadable: " + patch.Frame + " (use studio_list_overlays with kind='frame')");
+            }
+
+            return new OverlaysDto
+            {
+                Background = Convert.ToString(studio.sceneInfo.background),
+                Frame = Convert.ToString(studio.sceneInfo.frame),
+            };
+        }
+
+        // Studio keeps its BackgroundCtrl private with no accessor, unlike frameCtrl.
+        private static SNeo.BackgroundCtrl _backgroundCtrl;
+
+        private static SNeo.BackgroundCtrl BackgroundControl()
+        {
+            if (_backgroundCtrl == null) _backgroundCtrl = UnityEngine.Object.FindObjectOfType<SNeo.BackgroundCtrl>();
+            if (_backgroundCtrl == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "the background overlay is not available");
+            return _backgroundCtrl;
+        }
+
+        public static PostProcessingDto GetPostProcessing()
+        {
+            var studio = Require();
+            var si = studio.sceneInfo;
+            if (si == null) return null;
+            return new PostProcessingDto
+            {
+                ColorGrading = new PostProcessingDto.ColorGradingSection
+                {
+                    LookupTexture = si.cgLookupTexture,
+                    Blend = si.cgBlend,
+                    Saturation = si.cgSaturation,
+                    Brightness = si.cgBrightness,
+                    Contrast = si.cgContrast,
+                },
+                AmbientOcclusion = new PostProcessingDto.AmbientOcclusionSection
+                {
+                    Enabled = si.enableAmbientOcclusion,
+                    Intensity = si.aoIntensity,
+                    ThicknessModifier = si.aoThicknessModeifier,
+                    Color = C(si.aoColor),
+                },
+                Bloom = new PostProcessingDto.BloomSection
+                {
+                    Enabled = si.enableBloom,
+                    Intensity = si.bloomIntensity,
+                    Threshold = si.bloomThreshold,
+                    SoftKnee = si.bloomSoftKnee,
+                    Clamp = si.bloomClamp,
+                    Diffusion = si.bloomDiffusion,
+                    Color = C(si.bloomColor),
+                },
+                DepthOfField = new PostProcessingDto.DepthOfFieldSection
+                {
+                    Enabled = si.enableDepth,
+                    FocusObjectId = si.depthForcus,
+                    FocalSize = si.depthFocalSize,
+                    Aperture = si.depthAperture,
+                },
+                Vignette = new PostProcessingDto.VignetteSection
+                {
+                    Enabled = si.enableVignette,
+                    Intensity = si.vignetteIntensity,
+                },
+                ScreenSpaceReflections = new PostProcessingDto.ToggleSection { Enabled = si.enableSSR },
+                ReflectionProbe = new PostProcessingDto.ReflectionProbeSection
+                {
+                    Enabled = si.enableReflectionProbe,
+                    Cubemap = si.reflectionProbeCubemap,
+                    Intensity = si.reflectionProbeIntensity,
+                },
+                Fog = new PostProcessingDto.FogSection
+                {
+                    Enabled = si.enableFog,
+                    ExcludeFarPixels = si.fogExcludeFarPixels,
+                    Height = si.fogHeight,
+                    HeightDensity = si.fogHeightDensity,
+                    Color = C(si.fogColor),
+                    Density = si.fogDensity,
+                },
+                SunShafts = new PostProcessingDto.SunShaftsSection
+                {
+                    Enabled = si.enableSunShafts,
+                    CasterObjectId = si.sunCaster,
+                    ThresholdColor = C(si.sunThresholdColor),
+                    Color = C(si.sunColor),
+                    DistanceFalloff = si.sunDistanceFallOff,
+                    BlurSize = si.sunBlurSize,
+                    Intensity = si.sunIntensity,
+                },
+                SelfShadow = new PostProcessingDto.ToggleSection { Enabled = si.enableShadow },
+                EnvironmentLighting = new PostProcessingDto.EnvironmentLightingSection
+                {
+                    SkyColor = C(si.environmentLightingSkyColor),
+                    EquatorColor = C(si.environmentLightingEquatorColor),
+                    GroundColor = C(si.environmentLightingGroundColor),
+                },
+                Sky = new PostProcessingDto.SkySection
+                {
+                    Enabled = si.skyInfo.Enable,
+                    Pattern = si.skyInfo.Pattern,
+                },
+            };
+        }
+
+        public static PostProcessingDto SetPostProcessing(PostProcessingDto patch)
+        {
+            var studio = Require();
+            if (patch == null || patch.IsEmpty)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "nothing to change: pass at least one effect section");
+            var si = studio.sceneInfo;
+            var panel = studio.systemButtonCtrl;
+            if (si == null || panel == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "the screen-effect panel is not available");
+
+            // Everything refusable is refused before a single field is written: the
+            // panel re-applies the whole of sceneInfo in one pass, so a patch that
+            // failed halfway would already be visible on screen.
+            var info = Singleton<SNeo.Info>.Instance;
+            int? focus = null, caster = null;
+            if (patch.DepthOfField != null && patch.DepthOfField.FocusObjectId.HasValue)
+                focus = RequireItemTarget(patch.DepthOfField.FocusObjectId.Value, "depth_of_field.focus_object_id");
+            if (patch.SunShafts != null && patch.SunShafts.CasterObjectId.HasValue)
+                caster = RequireItemTarget(patch.SunShafts.CasterObjectId.Value, "sun_shafts.caster_object_id");
+            if (patch.ColorGrading != null && patch.ColorGrading.LookupTexture.HasValue)
+                RequireCatalogKey(info != null ? info.dicColorGradingLoadInfo : null,
+                    patch.ColorGrading.LookupTexture.Value, "color_grading");
+            if (patch.ReflectionProbe != null && patch.ReflectionProbe.Cubemap.HasValue)
+                RequireCatalogKey(info != null ? info.dicReflectionProbeLoadInfo : null,
+                    patch.ReflectionProbe.Cubemap.Value, "reflection_probe");
+            if (patch.Sky != null && patch.Sky.Pattern.HasValue)
+                RequireCatalogKey(info != null ? info.dicSkyPatternInfo : null,
+                    patch.Sky.Pattern.Value, "sky");
+
+            var cg = patch.ColorGrading;
+            if (cg != null)
+            {
+                if (cg.LookupTexture.HasValue) si.cgLookupTexture = cg.LookupTexture.Value;
+                if (cg.Blend.HasValue) si.cgBlend = cg.Blend.Value;
+                if (cg.Saturation.HasValue) si.cgSaturation = cg.Saturation.Value;
+                if (cg.Brightness.HasValue) si.cgBrightness = cg.Brightness.Value;
+                if (cg.Contrast.HasValue) si.cgContrast = cg.Contrast.Value;
+            }
+
+            var ao = patch.AmbientOcclusion;
+            if (ao != null)
+            {
+                if (ao.Enabled.HasValue) si.enableAmbientOcclusion = ao.Enabled.Value;
+                if (ao.Intensity.HasValue) si.aoIntensity = ao.Intensity.Value;
+                if (ao.ThicknessModifier.HasValue) si.aoThicknessModeifier = ao.ThicknessModifier.Value;
+                if (ao.Color != null) si.aoColor = Col(ao.Color);
+            }
+
+            var bloom = patch.Bloom;
+            if (bloom != null)
+            {
+                if (bloom.Enabled.HasValue) si.enableBloom = bloom.Enabled.Value;
+                if (bloom.Intensity.HasValue) si.bloomIntensity = bloom.Intensity.Value;
+                if (bloom.Threshold.HasValue) si.bloomThreshold = bloom.Threshold.Value;
+                if (bloom.SoftKnee.HasValue) si.bloomSoftKnee = bloom.SoftKnee.Value;
+                if (bloom.Clamp.HasValue) si.bloomClamp = bloom.Clamp.Value;
+                if (bloom.Diffusion.HasValue) si.bloomDiffusion = bloom.Diffusion.Value;
+                if (bloom.Color != null) si.bloomColor = Col(bloom.Color);
+            }
+
+            var dof = patch.DepthOfField;
+            if (dof != null)
+            {
+                if (dof.Enabled.HasValue) si.enableDepth = dof.Enabled.Value;
+                if (dof.FocalSize.HasValue) si.depthFocalSize = dof.FocalSize.Value;
+                if (dof.Aperture.HasValue) si.depthAperture = dof.Aperture.Value;
+            }
+
+            var vignette = patch.Vignette;
+            if (vignette != null)
+            {
+                if (vignette.Enabled.HasValue) si.enableVignette = vignette.Enabled.Value;
+                if (vignette.Intensity.HasValue) si.vignetteIntensity = vignette.Intensity.Value;
+            }
+
+            if (patch.ScreenSpaceReflections != null && patch.ScreenSpaceReflections.Enabled.HasValue)
+                si.enableSSR = patch.ScreenSpaceReflections.Enabled.Value;
+
+            var probe = patch.ReflectionProbe;
+            if (probe != null)
+            {
+                if (probe.Enabled.HasValue) si.enableReflectionProbe = probe.Enabled.Value;
+                if (probe.Cubemap.HasValue) si.reflectionProbeCubemap = probe.Cubemap.Value;
+                if (probe.Intensity.HasValue) si.reflectionProbeIntensity = probe.Intensity.Value;
+            }
+
+            var fog = patch.Fog;
+            if (fog != null)
+            {
+                if (fog.Enabled.HasValue) si.enableFog = fog.Enabled.Value;
+                if (fog.ExcludeFarPixels.HasValue) si.fogExcludeFarPixels = fog.ExcludeFarPixels.Value;
+                if (fog.Height.HasValue) si.fogHeight = fog.Height.Value;
+                if (fog.HeightDensity.HasValue) si.fogHeightDensity = fog.HeightDensity.Value;
+                if (fog.Color != null) si.fogColor = Col(fog.Color);
+                if (fog.Density.HasValue) si.fogDensity = fog.Density.Value;
+            }
+
+            var sun = patch.SunShafts;
+            if (sun != null)
+            {
+                if (sun.Enabled.HasValue) si.enableSunShafts = sun.Enabled.Value;
+                if (sun.ThresholdColor != null) si.sunThresholdColor = Col(sun.ThresholdColor);
+                if (sun.Color != null) si.sunColor = Col(sun.Color);
+                if (sun.DistanceFalloff.HasValue) si.sunDistanceFallOff = sun.DistanceFalloff.Value;
+                if (sun.BlurSize.HasValue) si.sunBlurSize = sun.BlurSize.Value;
+                if (sun.Intensity.HasValue) si.sunIntensity = sun.Intensity.Value;
+            }
+
+            // SelfShadowInfo does not touch the scene at all: it moves the global
+            // quality level by one step, so this flag outlives the scene it came from.
+            if (patch.SelfShadow != null && patch.SelfShadow.Enabled.HasValue)
+                si.enableShadow = patch.SelfShadow.Enabled.Value;
+
+            var env = patch.EnvironmentLighting;
+            if (env != null)
+            {
+                if (env.SkyColor != null) si.environmentLightingSkyColor = Col(env.SkyColor);
+                if (env.EquatorColor != null) si.environmentLightingEquatorColor = Col(env.EquatorColor);
+                if (env.GroundColor != null) si.environmentLightingGroundColor = Col(env.GroundColor);
+            }
+
+            var sky = patch.Sky;
+            if (sky != null)
+            {
+                if (sky.Enabled.HasValue) si.skyInfo.Enable = sky.Enabled.Value;
+                if (sky.Pattern.HasValue) si.skyInfo.Pattern = sky.Pattern.Value;
+            }
+
+            // Init is a no-op once done and resolves the image effects living on
+            // Camera.main, which SetSunCaster dereferences without a guard.
+            panel.Init();
+            if (focus.HasValue) studio.SetDepthOfFieldForcus(focus.Value);
+            // Unlike the depth-of-field focus, the sun caster is not restored by
+            // SunShaftsInfo.Apply — only SetSunCaster ever writes sunShafts.sunTransform.
+            if (caster.HasValue) studio.SetSunCaster(caster.Value);
+            // UpdateInfo pushes every effect from sceneInfo into its component and
+            // refreshes the panel's widgets, exactly as Studio does after a scene load.
+            panel.UpdateInfo();
+            return GetPostProcessing();
+        }
+
+        // SetDepthOfFieldForcus and SetSunCaster accept any key and quietly fall back
+        // to -1 for anything that is not an item, so the refusal has to happen here.
+        private static int RequireItemTarget(int id, string param)
+        {
+            if (id == -1) return -1;
+            var oci = SNeo.Studio.GetCtrlInfo(id);
+            if (oci == null)
+                throw new StudioApiException(StudioApiException.NotFound,
+                    "no scene object with id " + id + " for '" + param + "' (-1 means none)");
+            if (!(oci is SNeo.OCIItem))
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "'" + param + "' must be the id of an item (kind='item') or -1 for none; object " + id + " is a " + KindOf(oci));
+            return id;
+        }
+
+        private static void RequireCatalogKey<T>(Dictionary<int, T> catalog, int no, string name)
+        {
+            if (catalog == null || !catalog.ContainsKey(no))
+                throw new StudioApiException(StudioApiException.NotFound,
+                    "no " + name + " entry with no=" + no + " (use studio_search_catalog with catalog='" + name + "')");
+        }
+
+        private static float[] C(Color c) => new[] { c.r, c.g, c.b, c.a };
+
+        private static Color Col(float[] rgba) => new Color(rgba[0], rgba[1], rgba[2], rgba[3]);
 
         private static SNeo.GuideCommand.EqualsInfo Equals(int key, Vector3 oldValue, Vector3 newValue) =>
             new SNeo.GuideCommand.EqualsInfo { dicKey = key, oldValue = oldValue, newValue = newValue };

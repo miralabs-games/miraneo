@@ -80,9 +80,14 @@ namespace MiraStudio.Services
 
             try
             {
+                // Studio reloads the map, the overlays and the screen effects from the
+                // scene it just read, but never the chara light: CameraLightCtrl is
+                // only driven by its own panel, so without this the viewport keeps the
+                // previous lighting while sceneInfo already holds the new one.
+                StudioAdapter.ReflectSceneLighting();
                 tcs.TrySetResult(new JsonObject()
                     .Add("path", path)
-                    .Add("scene", StudioAdapter.GetScene().ToJson()));
+                    .Add("scene", StudioAdapter.GetScene(false).ToJson()));
             }
             catch (Exception e)
             {

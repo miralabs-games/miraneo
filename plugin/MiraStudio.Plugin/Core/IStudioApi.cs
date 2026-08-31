@@ -17,6 +17,7 @@ namespace MiraStudio.Core
         List<PoseFileDto> ListPoses(string sex, string query, int limit);
         List<AttachPointDto> ListAttachPoints(int id);
         SkeletonDto ListBones(int id);
+        List<OverlayFileDto> ListOverlays(string kind, string query, int limit);
 
         // Write
         CameraDto SetCamera(CameraPatch patch);
@@ -33,6 +34,9 @@ namespace MiraStudio.Core
         ObjectDto AttachObject(int id, int? parentId, int? attachPoint, string attachPointName);
         SkeletonDto SetCharacterBone(int id, List<KeyValuePair<string, Vec3>> rotations);
         SkeletonDto SetCharacterIk(int id, List<IkTargetPatch> targets);
+        SceneLightingDto SetSceneLighting(SceneLightingPatch patch);
+        OverlaysDto SetOverlay(OverlayPatch patch);
+        PostProcessingDto SetPostProcessing(PostProcessingDto patch);
     }
 
     public sealed class StudioApiException : Exception

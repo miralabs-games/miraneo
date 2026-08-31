@@ -1,9 +1,9 @@
 {
-  "description": "Search Studio's asset catalogs to find the ids needed to spawn things or drive characters. catalog='item' returns props/furniture/effects with the (group, category, no) triple required by studio_create_object; catalog='light' returns the light types with the 'no' required by studio_create_light; catalog='anime' returns the animation clips with the (group, category, no) triple required by studio_set_character_anime. Always call this before creating an object or setting an animation — ids cannot be guessed.",
+  "description": "Search Studio's asset catalogs to find the ids needed to spawn things, drive characters or set the environment. catalog='item' returns props/furniture/effects with the (group, category, no) triple required by studio_create_object; catalog='light' returns the light types with the 'no' required by studio_create_light; catalog='anime' returns the animation clips with the (group, category, no) triple required by studio_set_character_anime; catalog='map' returns the 3D sets required by studio_set_map; catalog='color_grading', 'reflection_probe' and 'sky' return the three asset lists studio_set_post_processing picks from. Always call this before creating an object, setting an animation or changing the map — ids cannot be guessed.",
   "input": {
     "type": "object",
     "properties": {
-      "catalog": { "type": "string", "enum": ["item", "light", "anime"], "default": "item" },
+      "catalog": { "type": "string", "enum": ["item", "light", "anime", "map", "color_grading", "reflection_probe", "sky"], "default": "item" },
       "query": { "type": "string", "description": "case-insensitive substring matched against the asset name, and (for items and animations) its group and category names. Omit to list everything up to 'limit'." },
       "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50 }
     },
@@ -14,7 +14,7 @@
     "items": {
       "type": "object",
       "properties": {
-        "catalog": { "type": "string", "enum": ["item", "light", "anime"] },
+        "catalog": { "type": "string", "enum": ["item", "light", "anime", "map", "color_grading", "reflection_probe", "sky"] },
         "group": { "type": ["integer", "null"], "description": "items and animations only" },
         "category": { "type": ["integer", "null"], "description": "items and animations only" },
         "no": { "type": "integer" },

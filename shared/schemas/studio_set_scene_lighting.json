@@ -1,0 +1,23 @@
+{
+  "description": "Set the scene's main character light — the directional light Studio's own light panel controls, distinct from the OCILight objects studio_create_light spawns. Every field is optional and absolute; omitted fields keep their current value. Ranges are Studio's own input clamps. Returns the resulting lighting state.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4, "description": "[r,g,b] or [r,g,b,a], each 0..1" },
+      "intensity": { "type": "number", "minimum": 0.1, "maximum": 2 },
+      "rot": { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 359 }, "minItems": 2, "maxItems": 2, "description": "light direction as two euler angles [x,y] in degrees, 0..359" },
+      "shadow": { "type": "boolean", "description": "soft shadows on or off" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "color": { "type": "array", "items": { "type": "number" } },
+      "intensity": { "type": "number" },
+      "rot": { "type": "array", "items": { "type": "number" } },
+      "shadow": { "type": "boolean" }
+    },
+    "required": ["color", "intensity", "rot", "shadow"]
+  }
+}

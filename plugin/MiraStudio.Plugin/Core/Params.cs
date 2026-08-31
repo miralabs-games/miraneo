@@ -102,6 +102,26 @@ namespace MiraStudio.Core
             return rgba;
         }
 
+        // Two angles, as Studio stores the chara light's orientation (LightInfo.rot).
+        public static float[] OptPair(JsonObject p, string key)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var arr = node as JsonArray;
+            if (arr == null || arr.Count != 2) throw Invalid(key, "an array of 2 numbers");
+            return new[] { Number(arr, 0, key), Number(arr, 1, key) };
+        }
+
+        // A named group of fields inside a patch, e.g. post-processing's "bloom".
+        private static JsonObject OptSection(JsonObject p, string key)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var obj = node as JsonObject;
+            if (obj == null) throw Invalid(key, "an object");
+            return obj;
+        }
+
         public static TransformPatch Transform(JsonObject p) => new TransformPatch
         {
             Pos = OptVec3(p, "pos"),
@@ -152,6 +172,135 @@ namespace MiraStudio.Core
             LookNeck = OptIntN(p, "look_neck"),
             Categories = BoolMap(p, "expression_categories"),
         };
+
+        public static MapPatch Map(JsonObject p) => new MapPatch
+        {
+            No = OptIntN(p, "no"),
+            Pos = OptVec3(p, "pos"),
+            Rot = OptVec3(p, "rot"),
+            Option = OptBool(p, "option"),
+            Light = OptBool(p, "light"),
+        };
+
+        public static SceneLightingPatch SceneLighting(JsonObject p) => new SceneLightingPatch
+        {
+            Color = OptColor(p, "color"),
+            Intensity = OptFloat(p, "intensity"),
+            Rot = OptPair(p, "rot"),
+            Shadow = OptBool(p, "shadow"),
+        };
+
+        public static OverlayPatch Overlay(JsonObject p) => new OverlayPatch
+        {
+            Background = OptString(p, "background"),
+            Frame = OptString(p, "frame"),
+        };
+
+        public static PostProcessingDto PostProcessing(JsonObject p)
+        {
+            var dto = new PostProcessingDto();
+
+            var s = OptSection(p, "color_grading");
+            if (s != null) dto.ColorGrading = new PostProcessingDto.ColorGradingSection
+            {
+                LookupTexture = OptIntN(s, "lookup_texture"),
+                Blend = OptFloat(s, "blend"),
+                Saturation = OptIntN(s, "saturation"),
+                Brightness = OptIntN(s, "brightness"),
+                Contrast = OptIntN(s, "contrast"),
+            };
+
+            s = OptSection(p, "ambient_occlusion");
+            if (s != null) dto.AmbientOcclusion = new PostProcessingDto.AmbientOcclusionSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                Intensity = OptFloat(s, "intensity"),
+                ThicknessModifier = OptFloat(s, "thickness_modifier"),
+                Color = OptColor(s, "color"),
+            };
+
+            s = OptSection(p, "bloom");
+            if (s != null) dto.Bloom = new PostProcessingDto.BloomSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                Intensity = OptFloat(s, "intensity"),
+                Threshold = OptFloat(s, "threshold"),
+                SoftKnee = OptFloat(s, "soft_knee"),
+                Clamp = OptBool(s, "clamp"),
+                Diffusion = OptFloat(s, "diffusion"),
+                Color = OptColor(s, "color"),
+            };
+
+            s = OptSection(p, "depth_of_field");
+            if (s != null) dto.DepthOfField = new PostProcessingDto.DepthOfFieldSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                FocusObjectId = OptIntN(s, "focus_object_id"),
+                FocalSize = OptFloat(s, "focal_size"),
+                Aperture = OptFloat(s, "aperture"),
+            };
+
+            s = OptSection(p, "vignette");
+            if (s != null) dto.Vignette = new PostProcessingDto.VignetteSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                Intensity = OptFloat(s, "intensity"),
+            };
+
+            s = OptSection(p, "screen_space_reflections");
+            if (s != null) dto.ScreenSpaceReflections = new PostProcessingDto.ToggleSection { Enabled = OptBool(s, "enabled") };
+
+            s = OptSection(p, "reflection_probe");
+            if (s != null) dto.ReflectionProbe = new PostProcessingDto.ReflectionProbeSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                Cubemap = OptIntN(s, "cubemap"),
+                Intensity = OptFloat(s, "intensity"),
+            };
+
+            s = OptSection(p, "fog");
+            if (s != null) dto.Fog = new PostProcessingDto.FogSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                ExcludeFarPixels = OptBool(s, "exclude_far_pixels"),
+                Height = OptFloat(s, "height"),
+                HeightDensity = OptFloat(s, "height_density"),
+                Color = OptColor(s, "color"),
+                Density = OptFloat(s, "density"),
+            };
+
+            s = OptSection(p, "sun_shafts");
+            if (s != null) dto.SunShafts = new PostProcessingDto.SunShaftsSection
+            {
+                Enabled = OptBool(s, "enabled"),
+                CasterObjectId = OptIntN(s, "caster_object_id"),
+                ThresholdColor = OptColor(s, "threshold_color"),
+                Color = OptColor(s, "color"),
+                DistanceFalloff = OptFloat(s, "distance_falloff"),
+                BlurSize = OptFloat(s, "blur_size"),
+                Intensity = OptFloat(s, "intensity"),
+            };
+
+            s = OptSection(p, "self_shadow");
+            if (s != null) dto.SelfShadow = new PostProcessingDto.ToggleSection { Enabled = OptBool(s, "enabled") };
+
+            s = OptSection(p, "environment_lighting");
+            if (s != null) dto.EnvironmentLighting = new PostProcessingDto.EnvironmentLightingSection
+            {
+                SkyColor = OptColor(s, "sky_color"),
+                EquatorColor = OptColor(s, "equator_color"),
+                GroundColor = OptColor(s, "ground_color"),
+            };
+
+            s = OptSection(p, "sky");
+            if (s != null) dto.Sky = new PostProcessingDto.SkySection
+            {
+                Enabled = OptBool(s, "enabled"),
+                Pattern = OptIntN(s, "pattern"),
+            };
+
+            return dto;
+        }
 
         public static KinematicsPatch Kinematics(JsonObject p) => new KinematicsPatch
         {

@@ -1,0 +1,19 @@
+{
+  "description": "Set the 2D overlay images: 'background' is drawn behind the whole scene, 'frame' on top of it. Values come from studio_list_overlays. Pass an empty string to clear one, omit a field to leave it untouched. These are flat images and do not replace the 3D map (studio_set_map). An unreadable image clears that overlay and reports an error. Returns both overlays as the scene now holds them.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "background": { "type": "string", "description": "'path' of a background from studio_list_overlays, or \"\" to clear" },
+      "frame": { "type": "string", "description": "'path' of a frame from studio_list_overlays, or \"\" to clear" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "background": { "type": "string" },
+      "frame": { "type": "string" }
+    },
+    "required": ["background", "frame"]
+  }
+}

@@ -38,6 +38,11 @@ namespace MiraStudio.Core
     {
         public int Total, Characters, Items, Lights, Folders, Routes, Cameras;
         public string Background, Frame;
+        public MapDto Map;
+        public SceneLightingDto Lighting;
+        // Only studio_get_scene fills this one: the scene summary is also embedded in
+        // the load and save results, where forty post-processing fields are noise.
+        public PostProcessingDto PostProcessing;
 
         public JsonNode ToJson() => new JsonObject()
             .Add("total_objects", Total)
@@ -48,7 +53,262 @@ namespace MiraStudio.Core
             .Add("routes", Routes)
             .Add("cameras", Cameras)
             .Add("background", Background)
+            .Add("frame", Frame)
+            .Add("map", Map != null ? Map.ToJson() : JsonNull.Instance)
+            .Add("lighting", Lighting != null ? Lighting.ToJson() : JsonNull.Instance)
+            .Add("post_processing", PostProcessing != null ? PostProcessing.ToJson() : JsonNull.Instance);
+    }
+
+    // JSON helpers for the optional-field DTOs below: a section doubles as its own
+    // patch, so every field is nullable and a read-back is simply a fully populated one.
+    internal static class J
+    {
+        public static JsonNode N(int? v) => v.HasValue ? (JsonNode)v.Value : JsonNull.Instance;
+        public static JsonNode N(float? v) => v.HasValue ? (JsonNode)v.Value : JsonNull.Instance;
+        public static JsonNode N(bool? v) => v.HasValue ? (JsonNode)v.Value : JsonNull.Instance;
+
+        public static JsonNode Color(float[] rgba)
+        {
+            if (rgba == null) return JsonNull.Instance;
+            var arr = new JsonArray();
+            foreach (var c in rgba) arr.Add(c);
+            return arr;
+        }
+
+        public static JsonNode Pair(float[] xy)
+        {
+            if (xy == null) return JsonNull.Instance;
+            var arr = new JsonArray();
+            foreach (var v in xy) arr.Add(v);
+            return arr;
+        }
+    }
+
+    public sealed class MapDto
+    {
+        public int No;
+        public string Name;
+        public bool Loaded, Option, Light, OptionAvailable, LightAvailable;
+        public Vec3 Pos, Rot;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("no", No)
+            .Add("name", Name)
+            .Add("loaded", Loaded)
+            .Add("pos", Pos.ToJson())
+            .Add("rot", Rot.ToJson())
+            .Add("option", Option)
+            .Add("option_available", OptionAvailable)
+            .Add("light", Light)
+            .Add("light_available", LightAvailable);
+    }
+
+    // SceneInfo.charaLight. Its sibling mapLight is deliberately absent: SceneInfo.Save
+    // and Load are its only users in the whole assembly, so writing it changes nothing.
+    public sealed class SceneLightingDto
+    {
+        public float[] Color, Rot;
+        public float? Intensity;
+        public bool? Shadow;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("color", J.Color(Color))
+            .Add("intensity", J.N(Intensity))
+            .Add("rot", J.Pair(Rot))
+            .Add("shadow", J.N(Shadow));
+    }
+
+    public sealed class OverlaysDto
+    {
+        public string Background, Frame;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("background", Background)
             .Add("frame", Frame);
+    }
+
+    public sealed class OverlayFileDto
+    {
+        public string Kind, Path, Name, Source;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("kind", Kind)
+            .Add("path", Path)
+            .Add("name", Name)
+            .Add("source", Source);
+    }
+
+    // One class for both directions: as a patch only the supplied fields are set, and
+    // a read-back returns the same shape fully populated. Section names and field names
+    // follow Studio's own screen-effect panel (SystemButtonCtrl).
+    public sealed class PostProcessingDto
+    {
+        public sealed class ColorGradingSection
+        {
+            public int? LookupTexture, Saturation, Brightness, Contrast;
+            public float? Blend;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("lookup_texture", J.N(LookupTexture))
+                .Add("blend", J.N(Blend))
+                .Add("saturation", J.N(Saturation))
+                .Add("brightness", J.N(Brightness))
+                .Add("contrast", J.N(Contrast));
+        }
+
+        public sealed class AmbientOcclusionSection
+        {
+            public bool? Enabled;
+            public float? Intensity, ThicknessModifier;
+            public float[] Color;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("intensity", J.N(Intensity))
+                .Add("thickness_modifier", J.N(ThicknessModifier))
+                .Add("color", J.Color(Color));
+        }
+
+        public sealed class BloomSection
+        {
+            public bool? Enabled, Clamp;
+            public float? Intensity, Threshold, SoftKnee, Diffusion;
+            public float[] Color;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("intensity", J.N(Intensity))
+                .Add("threshold", J.N(Threshold))
+                .Add("soft_knee", J.N(SoftKnee))
+                .Add("clamp", J.N(Clamp))
+                .Add("diffusion", J.N(Diffusion))
+                .Add("color", J.Color(Color));
+        }
+
+        public sealed class DepthOfFieldSection
+        {
+            public bool? Enabled;
+            public int? FocusObjectId;
+            public float? FocalSize, Aperture;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("focus_object_id", J.N(FocusObjectId))
+                .Add("focal_size", J.N(FocalSize))
+                .Add("aperture", J.N(Aperture));
+        }
+
+        public sealed class VignetteSection
+        {
+            public bool? Enabled;
+            public float? Intensity;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("intensity", J.N(Intensity));
+        }
+
+        public sealed class ToggleSection
+        {
+            public bool? Enabled;
+
+            public JsonNode ToJson() => new JsonObject().Add("enabled", J.N(Enabled));
+        }
+
+        public sealed class ReflectionProbeSection
+        {
+            public bool? Enabled;
+            public int? Cubemap;
+            public float? Intensity;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("cubemap", J.N(Cubemap))
+                .Add("intensity", J.N(Intensity));
+        }
+
+        public sealed class FogSection
+        {
+            public bool? Enabled, ExcludeFarPixels;
+            public float? Height, HeightDensity, Density;
+            public float[] Color;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("exclude_far_pixels", J.N(ExcludeFarPixels))
+                .Add("height", J.N(Height))
+                .Add("height_density", J.N(HeightDensity))
+                .Add("color", J.Color(Color))
+                .Add("density", J.N(Density));
+        }
+
+        public sealed class SunShaftsSection
+        {
+            public bool? Enabled;
+            public int? CasterObjectId;
+            public float? DistanceFalloff, BlurSize, Intensity;
+            public float[] ThresholdColor, Color;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("caster_object_id", J.N(CasterObjectId))
+                .Add("threshold_color", J.Color(ThresholdColor))
+                .Add("color", J.Color(Color))
+                .Add("distance_falloff", J.N(DistanceFalloff))
+                .Add("blur_size", J.N(BlurSize))
+                .Add("intensity", J.N(Intensity));
+        }
+
+        public sealed class EnvironmentLightingSection
+        {
+            public float[] SkyColor, EquatorColor, GroundColor;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("sky_color", J.Color(SkyColor))
+                .Add("equator_color", J.Color(EquatorColor))
+                .Add("ground_color", J.Color(GroundColor));
+        }
+
+        public sealed class SkySection
+        {
+            public bool? Enabled;
+            public int? Pattern;
+
+            public JsonNode ToJson() => new JsonObject()
+                .Add("enabled", J.N(Enabled))
+                .Add("pattern", J.N(Pattern));
+        }
+
+        public ColorGradingSection ColorGrading;
+        public AmbientOcclusionSection AmbientOcclusion;
+        public BloomSection Bloom;
+        public DepthOfFieldSection DepthOfField;
+        public VignetteSection Vignette;
+        public ToggleSection ScreenSpaceReflections, SelfShadow;
+        public ReflectionProbeSection ReflectionProbe;
+        public FogSection Fog;
+        public SunShaftsSection SunShafts;
+        public EnvironmentLightingSection EnvironmentLighting;
+        public SkySection Sky;
+
+        public bool IsEmpty =>
+            ColorGrading == null && AmbientOcclusion == null && Bloom == null && DepthOfField == null &&
+            Vignette == null && ScreenSpaceReflections == null && SelfShadow == null && ReflectionProbe == null &&
+            Fog == null && SunShafts == null && EnvironmentLighting == null && Sky == null;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("color_grading", ColorGrading != null ? ColorGrading.ToJson() : JsonNull.Instance)
+            .Add("ambient_occlusion", AmbientOcclusion != null ? AmbientOcclusion.ToJson() : JsonNull.Instance)
+            .Add("bloom", Bloom != null ? Bloom.ToJson() : JsonNull.Instance)
+            .Add("depth_of_field", DepthOfField != null ? DepthOfField.ToJson() : JsonNull.Instance)
+            .Add("vignette", Vignette != null ? Vignette.ToJson() : JsonNull.Instance)
+            .Add("screen_space_reflections", ScreenSpaceReflections != null ? ScreenSpaceReflections.ToJson() : JsonNull.Instance)
+            .Add("reflection_probe", ReflectionProbe != null ? ReflectionProbe.ToJson() : JsonNull.Instance)
+            .Add("fog", Fog != null ? Fog.ToJson() : JsonNull.Instance)
+            .Add("sun_shafts", SunShafts != null ? SunShafts.ToJson() : JsonNull.Instance)
+            .Add("self_shadow", SelfShadow != null ? SelfShadow.ToJson() : JsonNull.Instance)
+            .Add("environment_lighting", EnvironmentLighting != null ? EnvironmentLighting.ToJson() : JsonNull.Instance)
+            .Add("sky", Sky != null ? Sky.ToJson() : JsonNull.Instance);
     }
 
     public sealed class AnimeDto
@@ -449,6 +709,35 @@ namespace MiraStudio.Core
     {
         public string Target;
         public Vec3? Pos, Rot;
+    }
+
+    // 'no' spans frames (the map loads in a coroutine) and resets the map transform,
+    // so a patch carrying both applies 'pos'/'rot' after the new map has settled.
+    public sealed class MapPatch
+    {
+        public int? No;
+        public Vec3? Pos, Rot;
+        public bool? Option, Light;
+
+        public bool IsEmpty => !No.HasValue && !Pos.HasValue && !Rot.HasValue && !Option.HasValue && !Light.HasValue;
+    }
+
+    public sealed class SceneLightingPatch
+    {
+        public float[] Color, Rot;
+        public float? Intensity;
+        public bool? Shadow;
+
+        public bool IsEmpty => Color == null && Rot == null && !Intensity.HasValue && !Shadow.HasValue;
+    }
+
+    // null leaves an overlay untouched, "" clears it — which is why these are strings
+    // and not the usual nullable value types.
+    public sealed class OverlayPatch
+    {
+        public string Background, Frame;
+
+        public bool IsEmpty => Background == null && Frame == null;
     }
 
     public sealed class ExpressionPatch

@@ -24,6 +24,7 @@ namespace MiraStudio.Services
         public List<PoseFileDto> ListPoses(string sex, string query, int limit) => StudioAdapter.ListPoses(sex, query, limit);
         public List<AttachPointDto> ListAttachPoints(int id) => StudioAdapter.ListAttachPoints(id);
         public SkeletonDto ListBones(int id) => StudioAdapter.ListBones(id);
+        public List<OverlayFileDto> ListOverlays(string kind, string query, int limit) => StudioAdapter.ListOverlays(kind, query, limit);
 
         public CameraDto SetCamera(CameraPatch patch) => StudioAdapter.SetCamera(patch);
         public ObjectDto CreateItem(int group, int category, int no, TransformPatch transform) => StudioAdapter.CreateItem(group, category, no, transform);
@@ -39,5 +40,8 @@ namespace MiraStudio.Services
         public ObjectDto AttachObject(int id, int? parentId, int? attachPoint, string attachPointName) => StudioAdapter.AttachObject(id, parentId, attachPoint, attachPointName);
         public SkeletonDto SetCharacterBone(int id, List<KeyValuePair<string, Vec3>> rotations) => StudioAdapter.SetCharacterBone(id, rotations);
         public SkeletonDto SetCharacterIk(int id, List<IkTargetPatch> targets) => StudioAdapter.SetCharacterIk(id, targets);
+        public SceneLightingDto SetSceneLighting(SceneLightingPatch patch) => StudioAdapter.SetSceneLighting(patch);
+        public OverlaysDto SetOverlay(OverlayPatch patch) => StudioAdapter.SetOverlay(patch);
+        public PostProcessingDto SetPostProcessing(PostProcessingDto patch) => StudioAdapter.SetPostProcessing(patch);
     }
 }

@@ -8,6 +8,7 @@ Transport/MainThreadDispatcher queue drained in Update() — all Studio access g
 Services/StudioService         implements Core/IStudioApi (single-frame operations)
 Services/ScreenshotService     WaitForEndOfFrame coroutine → ScreenCapture → PNG/JPG
 Services/SceneService          scene loading (waits for Studio's map coroutine)
+Services/MapService            map changes (waits for Studio.onChangeMap)
 Services/CameraService         camera writes (reads back after LateUpdate)
 Adapters/StudioAdapter         the ONLY file referencing Studio/Unity types
 Core/                          DTOs + JSON + Params + IStudioApi (no Unity types)
@@ -43,7 +44,7 @@ public interface IStudioApi
 }
 ```
 
-`studio_load_scene`, `studio_save_scene` and `studio_set_camera` are not on this interface: all three need to span frames and live in `Services/SceneService` and `Services/CameraService` as coroutine-backed `Task<JsonNode>`.
+`studio_load_scene`, `studio_save_scene`, `studio_set_camera` and `studio_set_map` are not on this interface: all four need to span frames and live in `Services/SceneService`, `Services/CameraService` and `Services/MapService` as coroutine-backed `Task<JsonNode>`.
 
 DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a dependency-free JSON reader/writer — the game ships no Newtonsoft).
 
@@ -58,7 +59,7 @@ DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a
 | Transform | `ObjectCtrlInfo.objectInfo.changeAmount.pos/rot/scale` |
 | Attachment parent | `ObjectCtrlInfo.parentInfo.objectInfo.dicKey` |
 | Character card name / sex | `OCIChar.oiCharInfo.charFile.parameter.fullname`, `OCIChar.sex` |
-| Scene summary | `Studio.Studio.sceneInfo` (`background`, `frame`) |
+| Scene summary | `Studio.Studio.sceneInfo` (`background`, `frame`, `mapInfo`, `charaLight`, and the flat screen-effect fields) |
 | Camera | `Studio.Studio.cameraCtrl` (`targetPos`, `cameraAngle`, `fieldOfView`) + `Camera.main` |
 | Screenshot | `ScreenCapture.CaptureScreenshotAsTexture()` after `WaitForEndOfFrame` |
 
@@ -97,6 +98,12 @@ DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a
 | Bone / IK target discovery | `OCIChar.listBones` (`BoneInfo.boneID`, `.boneGroup`, `.boneWeight`, `.boneInfo.changeAmount.rot`) and `OCIChar.listIKTarget` (`IKInfo.targetInfo`, `.boneObject`, `.guideObject.enableRot`); names from `Singleton<Info>.Instance.dicBoneInfo[boneID].bone` (the rig's transform name) and `Info.BoneInfo.name` (Japanese caption) |
 | Pose a bone / IK target | `UndoRedoManager.Do(GuideCommand.RotationEqualsCommand / MoveEqualsCommand)` on `OIBoneInfo.dicKey` / `OIIKTargetInfo.dicKey` — same path as object transforms, since `ObjectInfo..ctor` registers every bone in `Studio.dicChangeAmount` |
 | Reflect the live pose | `OCIChar.fkCtrl.CopyBone((OIBoneInfo.BoneGroup)353)` / `ikCtrl.CopyBone((OIBoneInfo.BoneGroup)31)` — the masks `MPCharCtrl` itself passes |
+| Change the map | `Studio.Studio.AddMap(no, _close, _wait, _coroutine: true)` → `Map.LoadMapCoroutine` (a full `Scene.LoadBaseScene`) then the private `SetupMap`. Catalog `Info.dicMapLoadInfo` (`MapLoadInfo.name`); `-1` releases the map |
+| Map transform / visibility | `sceneInfo.mapInfo.ca.pos/rot` + `Singleton<MapCtrl>.Instance.Reflect()`, undoable via `UndoRedoManager.Push(MapCommand.MoveEqualsCommand / RotationEqualsCommand)`; `Map.VisibleOption` / `VisibleLight` (they write `sceneInfo` themselves), gated on `Map.IsOption` / `IsLight` |
+| Scene (chara) light | `sceneInfo.charaLight` (`CameraLightCtrl.LightInfo`: `color`, `intensity`, `rot[2]`, `shadow`) + `Studio.cameraLightCtrl.Reflect()` |
+| 2D overlays | `BackgroundCtrl.Load(path)` and `Studio.frameCtrl.Load(name)`; lists as `BackgroundList`/`FrameList` build them, from `DefaultData.Create("bg")` + `UserData.Create("bg")` and `UserData.Create("frame")` |
+| Post-processing | Write the `sceneInfo` fields, then `Studio.systemButtonCtrl.UpdateInfo()`. `SystemButtonCtrl.Apply()` pushes all twelve `EffectInfo`s from `sceneInfo` into their components; `UpdateInfo()` does that *and* refreshes the panel's widgets, which is what Studio itself calls after a scene load. Catalogs `Info.dicColorGradingLoadInfo`, `dicReflectionProbeLoadInfo`, `dicSkyPatternInfo` |
+| Post-processing object targets | `Studio.SetDepthOfFieldForcus(key)` and `Studio.SetSunCaster(key)` (both forward to `SystemButtonCtrl`) |
 | Character state read-back | `OCIChar.oiCharInfo` (`animeInfo`, `handPtn`, `enableIK/FK`, `activeIK/FK`, `expression`, `mouthOpen`, `lipSync`), `OCIChar.charFileStatus` (`eyesOpenMax`, `eyesBlink`, `eyesLookPtn`, `neckLookPtn`), `OCIChar.animeSpeed/animePattern/animeOptionParam1|2/isAnimeMotion/isHAnime`, `charInfo.GetEyesPtn/GetEyebrowPtn/GetMouthPtn`, `charAnimeCtrl.normalizedTime`. **Not** `oiCharInfo.kinematicMode` — see below |
 
 Rules that follow from the above:
@@ -130,6 +137,15 @@ Rules that follow from the above:
 - A save waits one `WaitForEndOfFrame` first. The thumbnail renders the live cameras, whose transform is only applied in `LateUpdate`, and `OCIChar.OnSavePreprocessing` dereferences `neckLookCtrl` / `charInfo.animBody` with no null guard — so a character added in the same dispatcher drain would NRE. One frame covers both.
 - **A batch must not be dispatched like a normal method.** `RpcServer.Register` wraps its handler in `MainThreadDispatcher.Run`, so a batch registered that way would loop *inside* `Drain()` while each of its steps waits for the main thread to drain a queue only that same blocked thread can drain — a hard freeze on the ordinary path, not just an exotic one. `RegisterBatch` therefore keeps the loop on the HTTP worker thread (`Task.Run`) and lets every step marshal itself as usual, which also makes async steps (`set_camera`, `set_character_kinematics`, `save_scene`) work unchanged.
 - A batch cannot roll back and must not pretend to. `UndoRedoManager.Do` pushes a command *before* executing it, so a create whose asset load fails leaves an orphan command on the stack and shifts every index after it; `DeleteObject`, `CreateCharacter` and `AttachObject` clear the stack entirely. What is affordable is refusing the batch before it starts, so every step is checked for a known method, an object shape, nesting and `studio_screenshot` up front.
+- **`SceneInfo.mapLight` is dead data.** `SceneInfo.Init`, `Save` and `Load` are its only readers in the whole assembly — nothing ever pushes `CameraLightCtrl.MapLightInfo` into a `Light`. Only `charaLight` is live, through `CameraLightCtrl`, so the MCP surface exposes one scene light and not two. Same shape of trap as `OICharInfo.kinematicMode`.
+- **Nothing reflects `charaLight` when a scene is loaded.** `Studio.OnLoadAfter` reloads the map, both overlays and `systemButtonCtrl.UpdateInfo()`, but never touches `m_CameraLightCtrl`, whose only callers are its own panel's `Start`/`OnEnable`. A scene loaded in vanilla Studio therefore keeps the previous lighting until the light panel is opened. `LoadScene` calls `cameraLightCtrl.Reflect()` itself so the viewport matches the scene it just read.
+- **`SetupMap` resets `mapInfo.ca` and runs even when the map does not change.** `Map.LoadMapCoroutine` short-circuits on `no == Map.no`, but `AddMapCoroutine` calls `SetupMap` regardless, so re-selecting the current map silently recentres it. And `mapInfo.no` is written by `SetupMap` before it can be trusted as a completion signal — the reliable one is `Studio.onChangeMap`, the public `Action` `SetupMap` fires last. An unknown `no` is worse than an error: `LoadMapCoroutine` releases the map and `SetupMap` stores the id anyway, leaving a scene that claims a map it does not have.
+- Neither the map change nor the two map toggles are undoable, and `SetupMap` resets `changeAmount` with no command, so `SetMap` clears the stack whenever `no` is supplied — like delete and attach. A transform-only call instead pushes `MapCommand`, the same way `MapCtrl`'s own input fields do (apply first, `Push` rather than `Do`).
+- **Background and frame are stored asymmetrically.** `sceneInfo.background` keeps a root-relative path (`DefaultData/bg/x.png`, resolved against `Studio.ApplicationPath`) because backgrounds exist under both roots; `sceneInfo.frame` keeps a bare file name because `FrameCtrl.Load` prefixes `UserData/frame/` itself. Both `Load` methods return `false` *and* clear their `sceneInfo` field when the file is missing, which makes `Load("")` the documented way to clear an overlay and the return value the only failure signal.
+- **`SystemButtonCtrl` is the post-processing applier, not `ScreenEffect`.** Its twelve `EffectInfo`s each read `sceneInfo` and write one component, and `Apply()`/`UpdateInfo()` run all twelve — so a partial patch cannot be applied partially: the whole effect state goes back on screen in one pass. That is why every refusable field is checked before a single one is written.
+- **Two post-processing fields are object ids, and they fail silently.** `SetDepthOfFieldForcus` and `SetSunCaster` accept any key and quietly store `-1` for anything whose `kind != 1`, so both are validated against `OCIItem` up front. They are not symmetric on restore either: `DOFInfo.Apply` re-resolves `sceneInfo.depthForcus` on every apply, while `SunShaftsInfo.Apply` never touches `sunShafts.sunTransform` — only `SetSunCaster` writes it, so a sun caster has to be re-sent explicitly.
+- **`selfShadow` is not a scene setting.** `SelfShadowInfo.Set` does `QualitySettings.SetQualityLevel(level / 2 * 2 + (enable ? 0 : 1))`: it moves the global quality level by one step and outlives the scene that set it.
+- The numeric bounds of the screen-effect panel live in its prefab (`InputCombination.Min/Max` read `slider.minValue/maxValue`), not in code, so they are documented and not enforced — unlike the chara light's, which `CameraLightCtrl` clamps in code to `0.1..2` for intensity and `0..359` per rotation axis.
 - Never hand out Unity object references — ids only (`dicObjectCtrl` keys).
 - The camera transform is recomputed in `LateUpdate` (`InternalUpdateCameraState`), so anything reading `Camera.main` back after a camera write must wait a frame.
 - Scene scale varies per scene; never assume 1 unit = 1 m when choosing distances or light ranges.

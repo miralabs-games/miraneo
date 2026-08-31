@@ -1,5 +1,5 @@
 {
-  "description": "Summarize the current Studio NEO V2 scene: object counts per kind plus background/frame. Fails with 'studio not ready' until the Studio scene has finished loading.",
+  "description": "Summarize the current Studio NEO V2 scene: object counts per kind, the 3D map, the character light, the 2D overlays and the full post-processing state. This is the read-back for studio_set_map, studio_set_scene_lighting, studio_set_overlay and studio_set_post_processing. Fails with 'studio not ready' until the Studio scene has finished loading.",
   "input": {
     "type": "object",
     "properties": {},
@@ -15,8 +15,11 @@
       "folders": { "type": "integer" },
       "routes": { "type": "integer" },
       "cameras": { "type": "integer" },
-      "background": { "type": ["string", "null"] },
-      "frame": { "type": ["string", "null"] }
+      "background": { "type": ["string", "null"], "description": "2D background overlay; see studio_list_overlays" },
+      "frame": { "type": ["string", "null"], "description": "2D frame overlay; see studio_list_overlays" },
+      "map": { "type": ["object", "null"], "description": "same shape as the studio_set_map result: no, name, loaded, pos, rot, option, light and their *_available flags" },
+      "lighting": { "type": ["object", "null"], "description": "same shape as the studio_set_scene_lighting result: color, intensity, rot, shadow" },
+      "post_processing": { "type": ["object", "null"], "description": "same shape as the studio_set_post_processing result, all twelve sections filled. Null in the scene summary embedded in the studio_load_scene and studio_save_scene results." }
     },
     "required": ["total_objects", "characters", "items", "lights", "folders", "routes", "cameras"]
   }

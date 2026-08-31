@@ -1,0 +1,25 @@
+{
+  "description": "List the 2D overlay images available to studio_set_overlay: backgrounds (drawn behind everything, from DefaultData/bg and UserData/bg) and frames (drawn on top of everything, from UserData/frame). These are flat images, not the 3D map — use studio_search_catalog with catalog='map' for that. The 'path' of an entry is what studio_set_overlay takes.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "kind": { "type": "string", "enum": ["background", "frame"], "description": "omit to list both" },
+      "query": { "type": "string", "description": "case-insensitive substring matched against the image name and path" },
+      "limit": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["background", "frame"] },
+        "path": { "type": "string", "description": "the value to pass to studio_set_overlay" },
+        "name": { "type": "string", "description": "file name without extension" },
+        "source": { "type": "string", "enum": ["default", "user"] }
+      },
+      "required": ["kind", "path", "name", "source"]
+    }
+  }
+}

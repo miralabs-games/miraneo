@@ -1,0 +1,126 @@
+{
+  "description": "Set the scene's screen effects — the twelve sections of Studio's own screen-effect panel: colour grading, ambient occlusion, bloom, depth of field, vignette, screen-space reflections, reflection probe, fog, sun shafts, self shadow, environment lighting and sky. Every section and every field is optional and absolute; only what you pass is written, then the whole of the scene's effect state is re-applied at once. Numeric ranges are the panel's slider bounds, which live in Studio's UI prefab rather than in code, so they are documented here but not enforced — the returned state is what the scene actually holds. Ids for 'lookup_texture', 'cubemap' and 'pattern' come from studio_search_catalog with catalog='color_grading', 'reflection_probe' and 'sky'. Returns the resulting post-processing state, the same shape studio_get_scene reports.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "color_grading": {
+        "type": "object",
+        "properties": {
+          "lookup_texture": { "type": "integer", "description": "LUT id from studio_search_catalog (catalog='color_grading')" },
+          "blend": { "type": "number", "description": "0..1 — how much of the LUT is mixed in" },
+          "saturation": { "type": "integer" },
+          "brightness": { "type": "integer" },
+          "contrast": { "type": "integer" }
+        },
+        "additionalProperties": false
+      },
+      "ambient_occlusion": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "intensity": { "type": "number" },
+          "thickness_modifier": { "type": "number" },
+          "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 }
+        },
+        "additionalProperties": false
+      },
+      "bloom": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "intensity": { "type": "number" },
+          "threshold": { "type": "number" },
+          "soft_knee": { "type": "number" },
+          "clamp": { "type": "boolean" },
+          "diffusion": { "type": "number" },
+          "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 }
+        },
+        "additionalProperties": false
+      },
+      "depth_of_field": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "focus_object_id": { "type": "integer", "description": "id of the item to focus on (kind='item' in studio_list_objects), or -1 to focus on the camera's target point. Anything that is not an item is refused." },
+          "focal_size": { "type": "number" },
+          "aperture": { "type": "number" }
+        },
+        "additionalProperties": false
+      },
+      "vignette": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "intensity": { "type": "number" }
+        },
+        "additionalProperties": false
+      },
+      "screen_space_reflections": {
+        "type": "object",
+        "properties": { "enabled": { "type": "boolean" } },
+        "additionalProperties": false
+      },
+      "reflection_probe": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "cubemap": { "type": "integer", "description": "id from studio_search_catalog (catalog='reflection_probe')" },
+          "intensity": { "type": "number" }
+        },
+        "additionalProperties": false
+      },
+      "fog": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "exclude_far_pixels": { "type": "boolean" },
+          "height": { "type": "number" },
+          "height_density": { "type": "number" },
+          "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 },
+          "density": { "type": "number" }
+        },
+        "additionalProperties": false
+      },
+      "sun_shafts": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "caster_object_id": { "type": "integer", "description": "id of the item the shafts radiate from (kind='item'), or -1 for none. Anything that is not an item is refused." },
+          "threshold_color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 },
+          "color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 },
+          "distance_falloff": { "type": "number" },
+          "blur_size": { "type": "number" },
+          "intensity": { "type": "number" }
+        },
+        "additionalProperties": false
+      },
+      "self_shadow": {
+        "type": "object",
+        "properties": { "enabled": { "type": "boolean", "description": "Studio implements this by moving the global quality level one step, so it outlives the scene it was set in" } },
+        "additionalProperties": false
+      },
+      "environment_lighting": {
+        "type": "object",
+        "properties": {
+          "sky_color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 },
+          "equator_color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 },
+          "ground_color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4 }
+        },
+        "additionalProperties": false
+      },
+      "sky": {
+        "type": "object",
+        "properties": {
+          "enabled": { "type": "boolean", "description": "draw the skybox instead of a flat clear colour" },
+          "pattern": { "type": "integer", "description": "id from studio_search_catalog (catalog='sky'); also sets the sun direction" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the same twelve sections as the input, every field filled with the value the scene now holds"
+  }
+}

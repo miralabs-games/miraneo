@@ -9,7 +9,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | Tool | Description | Notes |
 |---|---|---|
 | `studio_get_info` | Runtime info (versions, `studio_loaded`, object count) | works before the Studio scene is ready |
-| `studio_get_scene` | Scene summary: object counts per kind, background/frame | errors with `-32000` until Studio is ready |
+| `studio_get_scene` | Scene summary: object counts per kind, background/frame, plus the map, the scene light and the full post-processing state | errors with `-32000` until Studio is ready; the read-back for all four environment write tools |
 | `studio_list_characters` | All characters: id, name, card full name, sex, visible, transform, anime, kinematic, face, hands, expression | the read-back tool for every character write |
 | `studio_list_objects` | All scene objects: id, kind, name, visible, parent_id, transform, light state | `parent_id` set for attached objects |
 | `studio_get_camera` | Viewport camera: target pos, angle, distance, fov, world pos/rot | first four round-trip into `studio_set_camera` |
@@ -20,6 +20,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_list_poses` | Pose files under `UserData/studio/pose` | paths feed `studio_set_character_pose`; each pose is sex-specific |
 | `studio_list_attach_points` | A character's 54 bone anchors: index, name, `available`, ids already attached | **required** before `studio_attach_object`: only `available` points can be used |
 | `studio_list_bones` | A character's posable skeleton: every FK bone (name, group, `weighted`, rot) and the 13 IK targets (name, group, `rotatable`, pos/rot) | **required** before posing: the bone set depends on the rig, hair and clothes |
+| `studio_list_overlays` | The 2D background and frame images on disk | paths feed `studio_set_overlay` |
 
 ### Write
 
@@ -42,6 +43,10 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_set_character_bone` | Rotate FK bones, several at a time | absolute euler degrees; one call = one undo step |
 | `studio_set_character_ik` | Move (and rotate, on hands and feet) IK targets, several at a time | absolute offsets; one call = one undo step |
 | `studio_attach_object` | Attach an object to a character bone, an item or a folder — or detach it | omit `parent_id` to detach; **not** undoable and clears the undo stack |
+| `studio_set_map` | Choose the 3D set, move it, toggle its optional objects and its own lights | a full scene load; **not** undoable and clears the undo stack when `no` is given |
+| `studio_set_scene_lighting` | The scene's main character light: colour, intensity, direction, shadows | partial + absolute; ranges are Studio's own clamps |
+| `studio_set_overlay` | The 2D `background` and `frame` images | `""` clears one; an unreadable image clears it too and reports an error |
+| `studio_set_post_processing` | The twelve screen effects: colour grading, AO, bloom, DOF, vignette, SSR, reflection probe, fog, sun shafts, self shadow, environment lighting, sky | partial + absolute per section; not undoable |
 | `studio_execute_batch` | Run up to 32 tools in order in one call | validated as a whole before anything runs, but **no rollback** once it starts |
 
 Every write tool takes **absolute** values and applies only the fields present, so repeating a call is idempotent. Item/light creation, transform edits and the anime playback settings are pushed onto Studio's native `UndoRedoManager`, so they can be undone from the Studio UI; deletion and character creation cannot (Studio NEO V2 has neither a delete command nor an add-character command, and clears the stack itself on the latter). The remaining character writes — pose, clip load, face, hands — have no command in Studio either, but unlike deletion they leave the stack usable, so they do not clear it.
@@ -67,6 +72,12 @@ Bone names are the rig's own transform names (`cf_J_ArmUp00_L`, `cf_J_Hand_Thumb
 **Scene scale is not fixed.** Studio scenes are frequently built at a scale other than 1 unit = 1 m — a real user scene tested here has a ~15-unit-tall character. Read an object's `transform` before choosing camera distances or light ranges instead of assuming metres.
 
 **Saving does not disturb the live scene.** `studio_save_scene` is the only write tool that changes nothing in the workspace: no object is touched, the undo stack is left intact, and the viewport is unchanged. Its thumbnail is rendered from the cameras as they are at save time, so anything visible in `studio_screenshot` — including selection gizmos and IK/FK handles — lands in the preview. The tool waits for the end of the frame first, so a save issued right after `studio_set_camera` or `studio_create_character` still captures the new state.
+
+**The set, the light and the grade are three different things.** `studio_set_map` loads the 3D set the scene is built in — a whole Unity scene, so the call takes a moment and, because Studio resets the map transform on every map change with no undo command, it clears the undo stack whenever `no` is given. It resets that transform even when the requested map is the one already loaded, so `pos`/`rot` are applied after the load has settled rather than before. `option` and `light` show the map's own optional objects and lights and are refused on a map that has neither: `map.option_available` and `map.light_available` say which. `studio_set_overlay` sets flat 2D images instead — `background` behind everything, `frame` on top — and neither replaces the map.
+
+**There is one scene light, not two.** `studio_set_scene_lighting` drives the character light Studio's light panel controls, which is separate from the `OCILight` objects `studio_create_light` spawns. Its sibling `mapLight` exists in the scene file and is deliberately absent from the API: nothing in Studio ever applies it. Loading a scene does not apply the character light either — Studio only reflects it when its panel is opened — so `studio_load_scene` reflects it itself and the viewport matches the scene that was just read.
+
+**Post-processing is one call for twelve effects.** Every section and field of `studio_set_post_processing` is optional and absolute, and the whole effect state is re-applied in one pass afterwards, so a rejected field means nothing was written at all. Numeric ranges are the panel's slider bounds, which live in Studio's UI prefab rather than in its code: they are documented per field but not enforced, and the returned state is what the scene actually holds. Three fields are ids that must exist — `color_grading.lookup_texture`, `reflection_probe.cubemap`, `sky.pattern`, all from `studio_search_catalog` — and two are scene object ids that must be **items**: `depth_of_field.focus_object_id` and `sun_shafts.caster_object_id` (`-1` for none). Studio's own setters accept anything and quietly fall back to `-1`, so both are refused instead. One field is not scene state at all: `self_shadow` moves the global quality level a step and outlives the scene it was set in.
 
 **Batching saves turns, not milliseconds.** A call costs about a millisecond of loopback plus one frame, so `studio_execute_batch` is worth reaching for when it removes LLM round-trips — a scene to build, a limb to pose, props to spawn and place — not when it removes latency. It buys no atomicity: every step is validated before any of them runs (unknown method, malformed step, nesting, `studio_screenshot`) and an unusable batch is refused whole, but once execution starts a failing step stops the batch and everything before it stays applied. Studio has no transaction, `UndoRedoManager.Do` pushes its command *before* executing it, and several tools clear the stack outright, so there is nothing to roll back to. The tool therefore always returns a result rather than an RPC error: `ok`, `executed`, `stopped_at` and `error` say exactly how far it got, and `steps` carries each result as the tool would have returned it alone.
 
@@ -94,4 +105,4 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-Outfits and Timeline. Left aside for now: clothes (sibling slots are coupled, top↔bottom and inner_t↔inner_b) and `siru` (read-back is a frame late, and a state above 2 throws inside `Manager.Character.Update` later).
+Outfits, then Timeline. Left aside for now: clothes (sibling slots are coupled, top↔bottom and inner_t↔inner_b) and `siru` (read-back is a frame late, and a state above 2 throws inside `Manager.Character.Update` later). Third-party plugins (Timeline, NodesConstraints) may only ever be optional: their tools would register when the plugin is detected and the rest of the API must work without them.

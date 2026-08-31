@@ -1,0 +1,29 @@
+{
+  "description": "Change the scene's 3D map (the set the scene is built in) and/or move it. 'no' comes from studio_search_catalog with catalog='map'; -1 removes the map entirely. Loading a map is a full Unity scene load, so this call takes a moment and clears Studio's undo stack. Every field is optional and absolute; 'pos'/'rot' are applied after the new map has settled, because Studio resets the map transform whenever a map is set — including when it is the map already loaded. 'option' and 'light' toggle the map's own optional objects and lights and are refused on a map that has none. Returns the resulting map state.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "no": { "type": "integer", "description": "map id from studio_search_catalog (catalog='map'), or -1 to remove the map" },
+      "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "map position [x,y,z]" },
+      "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "map rotation in euler degrees [x,y,z]" },
+      "option": { "type": "boolean", "description": "show the map's optional objects; only if map.option_available" },
+      "light": { "type": "boolean", "description": "show the map's own lights; only if map.light_available" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "no": { "type": "integer", "description": "-1 when no map is loaded" },
+      "name": { "type": ["string", "null"] },
+      "loaded": { "type": "boolean", "description": "whether the map's objects are actually in the scene" },
+      "pos": { "type": "array", "items": { "type": "number" } },
+      "rot": { "type": "array", "items": { "type": "number" } },
+      "option": { "type": "boolean" },
+      "option_available": { "type": "boolean", "description": "false when this map has no optional objects — 'option' is refused then" },
+      "light": { "type": "boolean" },
+      "light_available": { "type": "boolean", "description": "false when this map has no lights of its own — 'light' is refused then" }
+    },
+    "required": ["no", "loaded", "pos", "rot", "option", "light"]
+  }
+}

@@ -28,6 +28,11 @@ import createLight from "../../shared/schemas/studio_create_light.json";
 import setLight from "../../shared/schemas/studio_set_light.json";
 import setObjectTransform from "../../shared/schemas/studio_set_object_transform.json";
 import deleteObject from "../../shared/schemas/studio_delete_object.json";
+import listOverlays from "../../shared/schemas/studio_list_overlays.json";
+import setMap from "../../shared/schemas/studio_set_map.json";
+import setSceneLighting from "../../shared/schemas/studio_set_scene_lighting.json";
+import setOverlay from "../../shared/schemas/studio_set_overlay.json";
+import setPostProcessing from "../../shared/schemas/studio_set_post_processing.json";
 import executeBatch from "../../shared/schemas/studio_execute_batch.json";
 
 interface ToolDef {
@@ -66,6 +71,7 @@ export const TOOLS: ToolDef[] = [
   def("studio_list_poses", listPoses, 240000),
   def("studio_list_attach_points", listAttachPoints, 15000),
   def("studio_list_bones", listBones, 15000),
+  def("studio_list_overlays", listOverlays, 15000),
   def("studio_load_scene", loadScene, 240000),
   def("studio_save_scene", saveScene, 90000),
   def("studio_set_camera", setCamera, 15000),
@@ -83,6 +89,10 @@ export const TOOLS: ToolDef[] = [
   def("studio_set_character_bone", setCharacterBone, 15000),
   def("studio_set_character_ik", setCharacterIk, 15000),
   def("studio_attach_object", attachObject, 15000),
+  def("studio_set_map", setMap, 240000),
+  def("studio_set_scene_lighting", setSceneLighting, 15000),
+  def("studio_set_overlay", setOverlay, 90000),
+  def("studio_set_post_processing", setPostProcessing, 90000),
   def("studio_execute_batch", executeBatch, 300000),
 ];
 
