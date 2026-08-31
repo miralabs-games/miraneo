@@ -63,6 +63,21 @@ namespace MiraStudio.Core
             return b.Value;
         }
 
+        // One field that accepts either form, e.g. an attach point given as its
+        // index or as its name. Both outputs null means the field was absent.
+        public static void OptIntOrString(JsonObject p, string key, out int? number, out string text)
+        {
+            number = null;
+            text = null;
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return;
+            var n = node as JsonNumber;
+            if (n != null) { number = (int)n.Value; return; }
+            var s = node as JsonString;
+            if (s == null || string.IsNullOrEmpty(s.Value)) throw Invalid(key, "an integer or a non-empty string");
+            text = s.Value;
+        }
+
         public static Vec3? OptVec3(JsonObject p, string key)
         {
             var node = p.Get(key);
@@ -100,6 +115,24 @@ namespace MiraStudio.Core
             SpotAngle = OptFloat(p, "spot_angle"),
             Enabled = OptBool(p, "enabled"),
             Shadow = OptBool(p, "shadow"),
+        };
+
+        public static HandsPatch Hands(JsonObject p) => new HandsPatch
+        {
+            Left = OptIntN(p, "left"),
+            Right = OptIntN(p, "right"),
+        };
+
+        public static AnimePatch Anime(JsonObject p) => new AnimePatch
+        {
+            Group = OptIntN(p, "group"),
+            Category = OptIntN(p, "category"),
+            No = OptIntN(p, "no"),
+            NormalizedTime = OptFloat(p, "normalized_time"),
+            Speed = OptFloat(p, "speed"),
+            Pattern = OptFloat(p, "pattern"),
+            OptionParam1 = OptFloat(p, "option_param1"),
+            OptionParam2 = OptFloat(p, "option_param2"),
         };
 
         public static ExpressionPatch Expression(JsonObject p) => new ExpressionPatch

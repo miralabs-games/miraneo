@@ -13,6 +13,9 @@ import createCharacter from "../../shared/schemas/studio_create_character.json";
 import setCharacterPose from "../../shared/schemas/studio_set_character_pose.json";
 import setCharacterAnime from "../../shared/schemas/studio_set_character_anime.json";
 import setCharacterExpression from "../../shared/schemas/studio_set_character_expression.json";
+import setCharacterHands from "../../shared/schemas/studio_set_character_hands.json";
+import listAttachPoints from "../../shared/schemas/studio_list_attach_points.json";
+import attachObject from "../../shared/schemas/studio_attach_object.json";
 import loadScene from "../../shared/schemas/studio_load_scene.json";
 import saveScene from "../../shared/schemas/studio_save_scene.json";
 import setCamera from "../../shared/schemas/studio_set_camera.json";
@@ -56,6 +59,7 @@ export const TOOLS: ToolDef[] = [
   def("studio_list_scenes", listScenes, 15000),
   def("studio_list_character_cards", listCharacterCards, 240000),
   def("studio_list_poses", listPoses, 240000),
+  def("studio_list_attach_points", listAttachPoints, 15000),
   def("studio_load_scene", loadScene, 240000),
   def("studio_save_scene", saveScene, 90000),
   def("studio_set_camera", setCamera, 15000),
@@ -68,6 +72,8 @@ export const TOOLS: ToolDef[] = [
   def("studio_set_character_pose", setCharacterPose, 90000),
   def("studio_set_character_anime", setCharacterAnime, 90000),
   def("studio_set_character_expression", setCharacterExpression, 15000),
+  def("studio_set_character_hands", setCharacterHands, 15000),
+  def("studio_attach_object", attachObject, 15000),
 ];
 
 const bridge = new MiraBridge();

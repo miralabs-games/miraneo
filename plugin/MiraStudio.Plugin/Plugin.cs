@@ -74,6 +74,8 @@ namespace MiraStudio
                 Params.OptString(p, "sex"),
                 Params.OptString(p, "query"),
                 Params.OptInt(p, "limit", 100)).ConvertAll(e => e.ToJson())), 180000);
+            _server.Register("studio_list_attach_points", p => ToArray(
+                _service.ListAttachPoints(Params.ReqInt(p, "id")).ConvertAll(e => e.ToJson())));
 
             _server.RegisterAsync("studio_set_camera", p => CameraService.SetCamera(this, new CameraPatch
             {
@@ -108,13 +110,24 @@ namespace MiraStudio
                 Params.ReqString(p, "path")).ToJson(), 60000);
             _server.Register("studio_set_character_anime", p => _service.SetCharacterAnime(
                 Params.ReqInt(p, "id"),
-                Params.ReqInt(p, "group"),
-                Params.ReqInt(p, "category"),
-                Params.ReqInt(p, "no"),
-                Params.OptFloat(p, "normalized_time")).ToJson(), 60000);
+                Params.Anime(p)).ToJson(), 60000);
             _server.Register("studio_set_character_expression", p => _service.SetCharacterExpression(
                 Params.ReqInt(p, "id"),
                 Params.Expression(p)).ToJson());
+            _server.Register("studio_set_character_hands", p => _service.SetCharacterHands(
+                Params.ReqInt(p, "id"),
+                Params.Hands(p)).ToJson());
+            _server.Register("studio_attach_object", p =>
+            {
+                int? point;
+                string pointName;
+                Params.OptIntOrString(p, "attach_point", out point, out pointName);
+                return _service.AttachObject(
+                    Params.ReqInt(p, "id"),
+                    Params.OptIntN(p, "parent_id"),
+                    point,
+                    pointName).ToJson();
+            });
             _server.RegisterAsync("studio_load_scene", p => SceneService.LoadScene(this, Params.ReqString(p, "path")), 180000);
             _server.RegisterAsync("studio_save_scene", p => SceneService.SaveScene(this,
                 Params.OptString(p, "name"),

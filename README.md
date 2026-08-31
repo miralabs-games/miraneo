@@ -54,6 +54,6 @@ MiraStudio/
 
 ## Status
 
-Phase 3 (partial) — 15 MCP tools live against Studio NEO V2: full read-only inspection + screenshot, asset/scene discovery, and the first write operations (load scene, camera, create/transform/delete items and lights). See [docs/mcp-api.md](docs/mcp-api.md) for the tool list and [docs/reverse-engineering.md](docs/reverse-engineering.md) for the target analysis.
+Phase 4 (partial) — 25 MCP tools live against Studio NEO V2: full read-only inspection + screenshot, asset/scene discovery, loading and saving scenes, camera, create/transform/delete items and lights, characters (create, pose, animation and playback, expression, hands) and attachment to bones, items or folders. See [docs/mcp-api.md](docs/mcp-api.md) for the tool list and [docs/reverse-engineering.md](docs/reverse-engineering.md) for the target analysis.
 
-Not yet implemented: characters (create/pose/expression/outfit), attachment, saving scenes, animation/timeline, IK, batching.
+Not yet implemented: kinematics (IK/FK), outfits, timeline, batching.

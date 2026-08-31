@@ -1,0 +1,14 @@
+{
+  "description": "Set a character's hand shapes (fist, open, peace sign, pointing…). Partial and absolute — only the hands you pass are changed, so repeating a call is idempotent. Values are plain indices with no readable names: Studio's own panel shows a bare number too, so preview the result with studio_screenshot. 0 turns the hand shape off and lets the animation drive the fingers; 1..hands.count select a shape. Read 'hands' from studio_list_characters for the current values and the valid range. Worth knowing: neither studio_set_character_pose nor studio_set_character_anime touches the hands, so a pose file never restores them — this is the only way to set them. Not undoable from Studio (its own hand buttons are not either), but it does not clear the undo stack.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "left": { "type": "integer", "minimum": 0, "description": "left hand shape: 0 = off (animation drives the fingers), 1..hands.count = shape index" },
+      "right": { "type": "integer", "minimum": 0, "description": "right hand shape, same index space as 'left'" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters — read back 'hands' to confirm" }
+}

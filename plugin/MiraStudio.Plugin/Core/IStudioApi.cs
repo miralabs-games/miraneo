@@ -15,6 +15,7 @@ namespace MiraStudio.Core
         List<SceneFileDto> ListScenes(string query, int limit);
         List<CharacterCardDto> ListCharacterCards(string sex, string query, int limit);
         List<PoseFileDto> ListPoses(string sex, string query, int limit);
+        List<AttachPointDto> ListAttachPoints(int id);
 
         // Write
         CameraDto SetCamera(CameraPatch patch);
@@ -25,8 +26,10 @@ namespace MiraStudio.Core
         int DeleteObject(int id);
         ObjectDto CreateCharacter(string card, string sex, TransformPatch transform);
         CharacterDto SetCharacterPose(int id, string path);
-        CharacterDto SetCharacterAnime(int id, int group, int category, int no, float? normalizedTime);
+        CharacterDto SetCharacterAnime(int id, AnimePatch patch);
         CharacterDto SetCharacterExpression(int id, ExpressionPatch patch);
+        CharacterDto SetCharacterHands(int id, HandsPatch patch);
+        ObjectDto AttachObject(int id, int? parentId, int? attachPoint, string attachPointName);
     }
 
     public sealed class StudioApiException : Exception

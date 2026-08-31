@@ -1,0 +1,17 @@
+{
+  "description": "Attach an object to another object, or to a bone of a character, or detach it. Omit 'parent_id' to detach and put the object back in world space. Attaching to a character requires 'attach_point' (from studio_list_attach_points); attaching to an item or a folder takes no attach point. **This changes what 'transform' means for the object**: while attached, studio_set_object_transform and studio_list_objects work in the parent's local space, not world space, so re-read the object before moving it. Not undoable, and it clears Studio's undo stack — the attachment rebases coordinates, so any transform still on the stack would be replayed in the wrong space.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "id of the object to attach or detach, from studio_list_objects" },
+      "parent_id": { "type": "integer", "description": "id of the object to attach to — a character (with 'attach_point'), an item, or a folder. Omit or pass null to detach." },
+      "attach_point": {
+        "type": ["integer", "string"],
+        "description": "required when 'parent_id' is a character, rejected otherwise: the bone anchor, given either as the index or as the name from studio_list_attach_points (e.g. 39 or 'N_Hand_L'). Points whose 'available' is false are refused."
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the object, same shape as one entry of studio_list_objects — 'parent_id' and 'attach_point' confirm the result" }
+}

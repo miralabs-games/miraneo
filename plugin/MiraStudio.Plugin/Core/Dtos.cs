@@ -55,7 +55,8 @@ namespace MiraStudio.Core
     {
         public int Group, Category, No;
         public string Name, GroupName, CategoryName;
-        public float NormalizedTime, Speed;
+        public float NormalizedTime, Speed, Pattern, OptionParam1, OptionParam2;
+        public bool IsAnimeMotion, IsHAnime;
 
         public JsonNode ToJson() => new JsonObject()
             .Add("group", Group)
@@ -65,7 +66,22 @@ namespace MiraStudio.Core
             .Add("group_name", GroupName)
             .Add("category_name", CategoryName)
             .Add("normalized_time", NormalizedTime)
-            .Add("speed", Speed);
+            .Add("speed", Speed)
+            .Add("pattern", Pattern)
+            .Add("option_param1", OptionParam1)
+            .Add("option_param2", OptionParam2)
+            .Add("is_anime_motion", IsAnimeMotion)
+            .Add("is_h_anime", IsHAnime);
+    }
+
+    public sealed class HandsDto
+    {
+        public int Left, Right, Count;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("left", Left)
+            .Add("right", Right)
+            .Add("count", Count);
     }
 
     public sealed class KinematicDto
@@ -121,6 +137,7 @@ namespace MiraStudio.Core
         public AnimeDto Anime;
         public KinematicDto Kinematic;
         public FaceDto Face;
+        public HandsDto Hands;
         public bool[] Expression;
 
         public JsonNode ToJson() => new JsonObject()
@@ -133,6 +150,7 @@ namespace MiraStudio.Core
             .Add("anime", Anime != null ? Anime.ToJson() : JsonNull.Instance)
             .Add("kinematic", Kinematic != null ? Kinematic.ToJson() : JsonNull.Instance)
             .Add("face", Face != null ? Face.ToJson() : JsonNull.Instance)
+            .Add("hands", Hands != null ? Hands.ToJson() : JsonNull.Instance)
             .Add("expression", KinematicDto.Bools(Expression));
     }
 
@@ -183,12 +201,32 @@ namespace MiraStudio.Core
         }
     }
 
+    public sealed class AttachPointDto
+    {
+        public int Index;
+        public string Name;
+        public bool Available;
+        public System.Collections.Generic.List<int> Attached;
+
+        public JsonNode ToJson()
+        {
+            var attached = new JsonArray();
+            if (Attached != null)
+                foreach (var id in Attached) attached.Add(id);
+            return new JsonObject()
+                .Add("index", Index)
+                .Add("name", Name)
+                .Add("available", Available)
+                .Add("attached", attached);
+        }
+    }
+
     public sealed class ObjectDto
     {
         public int Id;
-        public string Kind, Name;
+        public string Kind, Name, AttachPointName;
         public bool Visible;
-        public int? ParentId;
+        public int? ParentId, AttachPointIndex;
         public TransformDto Transform;
         public LightDto Light;
 
@@ -198,6 +236,9 @@ namespace MiraStudio.Core
             .Add("name", Name)
             .Add("visible", Visible)
             .Add("parent_id", ParentId.HasValue ? (JsonNode)ParentId.Value : JsonNull.Instance)
+            .Add("attach_point", AttachPointIndex.HasValue
+                ? new JsonObject().Add("index", AttachPointIndex.Value).Add("name", AttachPointName)
+                : (JsonNode)JsonNull.Instance)
             .Add("transform", Transform != null ? Transform.ToJson() : JsonNull.Instance)
             .Add("light", Light != null ? Light.ToJson() : JsonNull.Instance);
     }
@@ -280,6 +321,25 @@ namespace MiraStudio.Core
     {
         public Vec3? TargetPos, Angle;
         public float? Fov, Distance;
+    }
+
+    public sealed class HandsPatch
+    {
+        public int? Left, Right;
+        public bool IsEmpty => !Left.HasValue && !Right.HasValue;
+    }
+
+    public sealed class AnimePatch
+    {
+        public int? Group, Category, No;
+        public float? NormalizedTime, Speed, Pattern, OptionParam1, OptionParam2;
+
+        public bool HasClip => Group.HasValue || Category.HasValue || No.HasValue;
+        public bool HasFullClip => Group.HasValue && Category.HasValue && No.HasValue;
+
+        public bool IsEmpty =>
+            !HasClip && !NormalizedTime.HasValue && !Speed.HasValue && !Pattern.HasValue &&
+            !OptionParam1.HasValue && !OptionParam2.HasValue;
     }
 
     public sealed class ExpressionPatch

@@ -1,0 +1,24 @@
+{
+  "description": "List a character's attachment points — the bone anchors an object can be pinned to (hands, head, back, waist…). Call this before studio_attach_object: point names and indices are fixed, but which ones actually exist depends on the character's rig, and attaching to a point whose bone is missing would silently leave the object floating at the scene root. Only points with 'available': true can be used.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "index": { "type": "integer", "description": "point index, 1..54; pass it (or 'name') as studio_attach_object's 'attach_point'" },
+        "name": { "type": "string", "description": "point name, e.g. 'N_Hand_L' or 'N_Head_top'; accepted by studio_attach_object in place of the index" },
+        "available": { "type": "boolean", "description": "the point resolves to a real bone on this character. **false means unusable** — the point node exists on every rig, but attaching to one without a bone orphans the object while still reporting success" },
+        "attached": { "type": "array", "items": { "type": "integer" }, "description": "ids of the objects currently attached to this point" }
+      },
+      "required": ["index", "name", "available", "attached"]
+    }
+  }
+}

@@ -1,15 +1,19 @@
 {
-  "description": "Set a character's base animation from the anime catalog. The (group, category, no) triple must come from studio_search_catalog with catalog='anime'. This only changes the animation clip — it does not touch IK/FK targets or expressions; use studio_set_character_pose for a full body pose. Note that the anime catalog is not sex-filtered (Studio does not filter it either), so a clip authored for the other sex will load but may look wrong.",
+  "description": "Set a character's base animation and/or its playback settings. Partial and absolute: pass (group, category, no) together to load a clip from the catalog (ids from studio_search_catalog with catalog='anime'), and/or pass speed/pattern/option_param1/option_param2 to adjust how the current clip plays. Loading a clip only changes the animation — it does not touch IK/FK targets, expressions or hand shapes; use studio_set_character_pose for a full body pose. The anime catalog is not sex-filtered (Studio does not filter it either), so a clip authored for the other sex will load but may look wrong. The playback settings are pushed onto Studio's undo stack and can be undone from the UI; loading a clip cannot.",
   "input": {
     "type": "object",
     "properties": {
       "id": { "type": "integer", "description": "character id from studio_list_characters" },
-      "group": { "type": "integer" },
+      "group": { "type": "integer", "description": "catalog group; must be given together with 'category' and 'no'" },
       "category": { "type": "integer" },
       "no": { "type": "integer" },
-      "normalized_time": { "type": "number", "minimum": 0, "description": "where to start inside the clip, in Unity normalized time: the fractional part is the position in the clip, the integer part is the loop count. 0..1 covers one pass. Defaults to 0." }
+      "normalized_time": { "type": "number", "minimum": 0, "description": "where to start inside the clip, in Unity normalized time: the fractional part is the position in the clip, the integer part is the loop count. 0..1 covers one pass. Defaults to 0. Only applies when loading a clip." },
+      "speed": { "type": "number", "minimum": 0, "maximum": 3, "description": "playback speed, 1 = normal, 0 freezes the animation on its current frame" },
+      "pattern": { "type": "number", "minimum": 0, "maximum": 1, "description": "clip variation, only reaches the animator when the loaded clip declares one — check 'anime.is_anime_motion' from studio_list_characters, otherwise the value is stored but does nothing" },
+      "option_param1": { "type": "number", "minimum": 0, "maximum": 1, "description": "first clip-specific parameter; only effective when 'anime.is_h_anime' is true" },
+      "option_param2": { "type": "number", "minimum": 0, "maximum": 1, "description": "second clip-specific parameter; same condition as 'option_param1'" }
     },
-    "required": ["id", "group", "category", "no"],
+    "required": ["id"],
     "additionalProperties": false
   },
   "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters" }

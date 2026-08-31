@@ -397,18 +397,72 @@ namespace MiraStudio.Adapters
             return ToCharacterDto(id, chr);
         }
 
-        public static CharacterDto SetCharacterAnime(int id, int group, int category, int no, float? normalizedTime)
+        public static CharacterDto SetCharacterAnime(int id, AnimePatch patch)
         {
             var chr = RequireCharacter(id);
-            var info = Singleton<SNeo.Info>.Instance;
-            Dictionary<int, Dictionary<int, SNeo.Info.AnimeLoadInfo>> categories;
-            Dictionary<int, SNeo.Info.AnimeLoadInfo> animes;
-            if (info == null || !info.dicAnimeLoadInfo.TryGetValue(group, out categories)
-                || !categories.TryGetValue(category, out animes) || !animes.ContainsKey(no))
-                throw new StudioApiException(StudioApiException.NotFound,
-                    "no animation with group=" + group + " category=" + category + " no=" + no + " (use studio_search_catalog with catalog='anime')");
+            if (patch == null || patch.IsEmpty) return ToCharacterDto(id, chr);
 
-            chr.LoadAnime(group, category, no, normalizedTime.HasValue ? normalizedTime.Value : 0f);
+            if (patch.HasClip && !patch.HasFullClip)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "'group', 'category' and 'no' must be given together (they identify one catalog entry)");
+            if (patch.NormalizedTime.HasValue && !patch.HasClip)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "'normalized_time' is a starting offset for the clip being loaded, so it needs 'group', 'category' and 'no'");
+
+            // Same clamps as Studio's own anime panel (AnimeControl); values outside
+            // them would save into a scene the vanilla UI cannot reproduce.
+            RequireRange(patch.Speed, 0f, 3f, "speed");
+            RequireRange(patch.Pattern, 0f, 1f, "pattern");
+            RequireRange(patch.OptionParam1, 0f, 1f, "option_param1");
+            RequireRange(patch.OptionParam2, 0f, 1f, "option_param2");
+
+            if (patch.HasFullClip)
+            {
+                int group = patch.Group.Value, category = patch.Category.Value, no = patch.No.Value;
+                var info = Singleton<SNeo.Info>.Instance;
+                Dictionary<int, Dictionary<int, SNeo.Info.AnimeLoadInfo>> categories;
+                Dictionary<int, SNeo.Info.AnimeLoadInfo> animes;
+                if (info == null || !info.dicAnimeLoadInfo.TryGetValue(group, out categories)
+                    || !categories.TryGetValue(category, out animes) || !animes.ContainsKey(no))
+                    throw new StudioApiException(StudioApiException.NotFound,
+                        "no animation with group=" + group + " category=" + category + " no=" + no + " (use studio_search_catalog with catalog='anime')");
+
+                chr.LoadAnime(group, category, no, patch.NormalizedTime.HasValue ? patch.NormalizedTime.Value : 0f);
+            }
+
+            // Playback settings come after the load: LoadAnime re-pushes them into the
+            // fresh animator, and isAnimeMotion/isHAnime only describe the loaded clip.
+            var key = chr.objectInfo.dicKey;
+            var undo = Singleton<SNeo.UndoRedoManager>.Instance;
+            if (patch.Speed.HasValue)
+                undo.Do(new SNeo.AnimeCommand.SpeedCommand(new[] { key }, patch.Speed.Value, new[] { chr.animeSpeed }));
+            if (patch.Pattern.HasValue)
+                undo.Do(new SNeo.AnimeCommand.PatternCommand(new[] { key }, patch.Pattern.Value, new[] { chr.animePattern }));
+            if (patch.OptionParam1.HasValue)
+                undo.Do(new SNeo.AnimeCommand.OptionParamCommand(new[] { key }, patch.OptionParam1.Value, new[] { chr.animeOptionParam1 }, 0));
+            if (patch.OptionParam2.HasValue)
+                undo.Do(new SNeo.AnimeCommand.OptionParamCommand(new[] { key }, patch.OptionParam2.Value, new[] { chr.animeOptionParam2 }, 1));
+            return ToCharacterDto(id, chr);
+        }
+
+        public static CharacterDto SetCharacterHands(int id, HandsPatch patch)
+        {
+            var chr = RequireCharacter(id);
+            if (patch == null || patch.IsEmpty) return ToCharacterDto(id, chr);
+
+            var count = HandAnimeCount(chr);
+            if (count < 0)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "the hand shape list is not loaded for character " + id);
+
+            // ChangeHandAnime writes handPtn before it can fail, and its failures are
+            // silent above the range (AnimationKeyInfo.GetInfo returns false) or a raw
+            // IndexOutOfRange below it, so both hands are checked before either write.
+            RequireHandPtn(patch.Left, count, "left");
+            RequireHandPtn(patch.Right, count, "right");
+
+            if (patch.Left.HasValue) chr.ChangeHandAnime(0, patch.Left.Value);
+            if (patch.Right.HasValue) chr.ChangeHandAnime(1, patch.Right.Value);
             return ToCharacterDto(id, chr);
         }
 
@@ -543,6 +597,158 @@ namespace MiraStudio.Adapters
             return before - studio.dicObjectCtrl.Count;
         }
 
+        public static List<AttachPointDto> ListAttachPoints(int id)
+        {
+            var chr = RequireCharacter(id);
+            var list = new List<AttachPointDto>();
+            foreach (var kv in chr.dicAccessoryPoint)
+                list.Add(new AttachPointDto
+                {
+                    Index = kv.Value,
+                    Name = AttachPointName(kv.Value),
+                    Available = AttachPointTransform(chr, kv.Value) != null,
+                    Attached = AttachedIds(chr, kv.Value),
+                });
+            list.Sort((a, b) => a.Index.CompareTo(b.Index));
+            return list;
+        }
+
+        public static ObjectDto AttachObject(int id, int? parentId, int? attachPoint, string attachPointName)
+        {
+            var studio = Require();
+            var oci = RequireObject(id);
+            var node = oci.treeNodeObject;
+            if (node == null)
+                throw new StudioApiException(StudioApiException.OperationFailed, "object " + id + " has no workspace node and cannot be attached");
+            if (!node.enableChangeParent)
+                throw new StudioApiException(StudioApiException.OperationFailed, "object " + id + " cannot be reparented");
+
+            var hasPoint = attachPoint.HasValue || attachPointName != null;
+            SNeo.TreeNodeObject target = null;
+            if (parentId.HasValue)
+            {
+                if (parentId.Value == id)
+                    throw new StudioApiException(StudioApiException.InvalidParams, "an object cannot be attached to itself");
+                var parent = RequireObject(parentId.Value);
+                var parentChar = parent as SNeo.OCIChar;
+                if (parentChar != null)
+                {
+                    var index = ResolveAttachPoint(parentChar, parentId.Value, attachPoint, attachPointName);
+                    target = FindAttachPointNode(parentChar, index);
+                    if (target == null)
+                        throw new StudioApiException(StudioApiException.OperationFailed,
+                            "character " + parentId.Value + " has no workspace node for attach point " + AttachPointName(index));
+                }
+                else
+                {
+                    if (hasPoint)
+                        throw new StudioApiException(StudioApiException.InvalidParams,
+                            "'attach_point' only applies when 'parent_id' is a character; object " + parentId.Value + " is of kind '" + KindOf(parent) + "'");
+                    target = parent.treeNodeObject;
+                    if (target == null)
+                        throw new StudioApiException(StudioApiException.OperationFailed, "object " + parentId.Value + " has no workspace node and cannot be a parent");
+                }
+                if (!target.enableAddChild)
+                    throw new StudioApiException(StudioApiException.InvalidParams, "object " + parentId.Value + " does not accept children");
+            }
+            else if (hasPoint)
+            {
+                throw new StudioApiException(StudioApiException.InvalidParams, "'attach_point' needs 'parent_id'");
+            }
+
+            // TreeNodeCtrl.SetParent reports nothing: it silently skips the whole
+            // parentage (and OnAttach with it) on a hierarchy loop or a node that
+            // refuses children, so the result is checked instead of the call.
+            studio.treeNodeCtrl.SetParent(node, target);
+            var actual = SafeParentId(oci);
+            if (target == null)
+            {
+                if (actual.HasValue)
+                    throw new StudioApiException(StudioApiException.OperationFailed, "Studio refused to detach object " + id);
+            }
+            else if (!actual.HasValue || actual.Value != parentId.Value)
+            {
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "Studio refused to attach object " + id + " to " + parentId.Value + " (it would close a loop in the workspace hierarchy)");
+            }
+
+            // OnAttach/OnDetach rebase changeAmount between world and parent space,
+            // so every transform command already on the stack would be replayed in
+            // the wrong space. Studio has no parentage command to undo this either.
+            Singleton<SNeo.UndoRedoManager>.Instance.Clear();
+            return ToDto(id, oci);
+        }
+
+        private static int ResolveAttachPoint(SNeo.OCIChar chr, int parentId, int? index, string name)
+        {
+            if (!index.HasValue && name == null)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "attaching to character " + parentId + " needs 'attach_point' (use studio_list_attach_points to pick one)");
+
+            var value = index.HasValue ? index.Value : AttachPointIndex(name);
+            if (value == 0)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "attach point 0 is 'none'; omit 'parent_id' to detach instead");
+            if (!chr.dicAccessoryPoint.ContainsValue(value))
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "attach point " + value + " does not exist on character " + parentId + " (use studio_list_attach_points)");
+
+            // The point nodes exist for every rig, but the bone behind one may not:
+            // OnAttach would then run in full, reparent the object to the scene root
+            // and still set parentInfo, so every read-back would look attached.
+            if (AttachPointTransform(chr, value) == null)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "attach point " + AttachPointName(value) + " (" + value + ") has no bone on character " + parentId +
+                    ", attaching there would leave the object orphaned (its 'available' is false in studio_list_attach_points)");
+            return value;
+        }
+
+        private static int AttachPointIndex(string name)
+        {
+            var names = Enum.GetNames(typeof(AIChara.ChaAccessoryDefine.AccessoryParentKey));
+            for (var i = 0; i < names.Length; i++)
+                if (string.Equals(names[i], name, StringComparison.OrdinalIgnoreCase))
+                    return (int)Enum.Parse(typeof(AIChara.ChaAccessoryDefine.AccessoryParentKey), names[i]);
+            throw new StudioApiException(StudioApiException.InvalidParams,
+                "unknown attach point '" + name + "' (use studio_list_attach_points for the names)");
+        }
+
+        // ChaAccessoryDefine.AccessoryParentName holds the Japanese labels Studio
+        // shows; the enum member is the bone-ish name an agent can actually reason
+        // about, so that is what the MCP surface uses.
+        private static string AttachPointName(int index)
+        {
+            var name = Enum.GetName(typeof(AIChara.ChaAccessoryDefine.AccessoryParentKey), index);
+            return name ?? ("point_" + index);
+        }
+
+        private static Transform AttachPointTransform(SNeo.OCIChar chr, int index)
+        {
+            try { return chr.charInfo.GetAccessoryParentTransform(index); }
+            catch { return null; }
+        }
+
+        private static SNeo.TreeNodeObject FindAttachPointNode(SNeo.OCIChar chr, int index)
+        {
+            foreach (var kv in chr.dicAccessoryPoint)
+                if (kv.Value == index) return kv.Key;
+            return null;
+        }
+
+        private static List<int> AttachedIds(SNeo.OCIChar chr, int index)
+        {
+            var ids = new List<int>();
+            try
+            {
+                List<SNeo.ObjectInfo> children;
+                if (chr.oiCharInfo.child.TryGetValue(index, out children) && children != null)
+                    foreach (var child in children)
+                        if (child != null) ids.Add(child.dicKey);
+            }
+            catch { }
+            return ids;
+        }
+
         private static void ApplyTransform(SNeo.ObjectCtrlInfo oci, TransformPatch patch, int? undoableKey = null)
         {
             if (patch == null || patch.IsEmpty) return;
@@ -599,6 +805,8 @@ namespace MiraStudio.Adapters
             Name = SafeName(oci),
             Visible = SafeVisible(oci),
             ParentId = SafeParentId(oci),
+            AttachPointIndex = SafeAttachPointIndex(oci),
+            AttachPointName = SafeAttachPointName(oci),
             Transform = SafeTransform(oci),
             Light = SafeLight(oci as SNeo.OCILight),
         };
@@ -821,6 +1029,32 @@ namespace MiraStudio.Adapters
 
         private static string SexName(int sex) => sex == 0 ? "male" : "female";
 
+        // OCIChar.HandAnimeNum dereferences ChaControl.sibHand without a guard, so it
+        // throws until the shape bundle is initialised. -1 means "unknown".
+        private static int HandAnimeCount(SNeo.OCIChar chr)
+        {
+            try { return chr.HandAnimeNum; }
+            catch { return -1; }
+        }
+
+        // 0 turns the hand shape off, 1..count select a shape (ChangeHandAnime passes
+        // ptn-1 to the shape list). Studio's own panel offers the same count+1 values.
+        private static void RequireHandPtn(int? ptn, int count, string param)
+        {
+            if (!ptn.HasValue) return;
+            if (ptn.Value < 0 || ptn.Value > count)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "parameter '" + param + "' must be 0.." + count + " for this character (0 disables the hand shape)");
+        }
+
+        private static void RequireRange(float? value, float min, float max, string param)
+        {
+            if (!value.HasValue) return;
+            if (value.Value < min || value.Value > max || float.IsNaN(value.Value))
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "parameter '" + param + "' must be " + min.ToString("0.##") + ".." + max.ToString("0.##"));
+        }
+
         // MPCharCtrl.NeckInfo maps its four buttons onto these neckLookPtn values.
         private static readonly int[] NeckPatterns = { 0, 1, 3, 4 };
 
@@ -877,6 +1111,7 @@ namespace MiraStudio.Adapters
             Anime = SafeAnime(chr),
             Kinematic = SafeKinematic(chr),
             Face = SafeFace(chr),
+            Hands = SafeHands(chr),
             Expression = SafeExpression(chr),
         };
 
@@ -892,6 +1127,11 @@ namespace MiraStudio.Adapters
                     No = ai.no,
                     NormalizedTime = chr.charAnimeCtrl != null ? chr.charAnimeCtrl.normalizedTime : 0f,
                     Speed = chr.animeSpeed,
+                    Pattern = chr.animePattern,
+                    OptionParam1 = chr.animeOptionParam1,
+                    OptionParam2 = chr.animeOptionParam2,
+                    IsAnimeMotion = chr.isAnimeMotion,
+                    IsHAnime = chr.isHAnime,
                 };
                 var info = Singleton<SNeo.Info>.Instance;
                 Dictionary<int, Dictionary<int, SNeo.Info.AnimeLoadInfo>> categories;
@@ -957,6 +1197,16 @@ namespace MiraStudio.Adapters
             catch { return null; }
         }
 
+        private static HandsDto SafeHands(SNeo.OCIChar chr)
+        {
+            try
+            {
+                var ptn = chr.oiCharInfo.handPtn;
+                return new HandsDto { Left = ptn[0], Right = ptn[1], Count = HandAnimeCount(chr) };
+            }
+            catch { return null; }
+        }
+
         private static bool[] SafeExpression(SNeo.OCIChar chr)
         {
             try { return (bool[])chr.oiCharInfo.expression.Clone(); }
@@ -1005,6 +1255,27 @@ namespace MiraStudio.Adapters
             }
             catch { }
             return null;
+        }
+
+        // OCIChar.OnDetachChild identifies an attached object the same way: by
+        // scanning oiCharInfo.child, which is the only record of which point holds it.
+        private static int? SafeAttachPointIndex(SNeo.ObjectCtrlInfo oci)
+        {
+            try
+            {
+                var parent = oci.parentInfo as SNeo.OCIChar;
+                if (parent == null) return null;
+                foreach (var kv in parent.oiCharInfo.child)
+                    if (kv.Value != null && kv.Value.Contains(oci.objectInfo)) return kv.Key;
+            }
+            catch { }
+            return null;
+        }
+
+        private static string SafeAttachPointName(SNeo.ObjectCtrlInfo oci)
+        {
+            var index = SafeAttachPointIndex(oci);
+            return index.HasValue ? AttachPointName(index.Value) : null;
         }
 
         private static TransformDto SafeTransform(SNeo.ObjectCtrlInfo oci)

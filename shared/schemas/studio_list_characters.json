@@ -1,5 +1,5 @@
 {
-  "description": "List every character currently present in the Studio scene, with its stable id, display name, card full name, sex, visibility, transform (pos/rot euler/scale), current animation, kinematic mode, face state and expression category flags. This is the tool to call to read back the result of studio_set_character_pose, studio_set_character_anime and studio_set_character_expression.",
+  "description": "List every character currently present in the Studio scene, with its stable id, display name, card full name, sex, visibility, transform (pos/rot euler/scale), current animation, kinematic mode, face state, hand shapes and expression category flags. This is the tool to call to read back the result of studio_set_character_pose, studio_set_character_anime, studio_set_character_expression and studio_set_character_hands.",
   "input": {
     "type": "object",
     "properties": {},
@@ -27,7 +27,12 @@
             "group_name": { "type": ["string", "null"] },
             "category_name": { "type": ["string", "null"] },
             "normalized_time": { "type": "number", "description": "live sample of the Animator's normalized time — it keeps growing while a looping clip plays, so it does not round-trip into studio_set_character_anime as a stable value" },
-            "speed": { "type": "number" }
+            "speed": { "type": "number", "description": "playback speed, 0..3" },
+            "pattern": { "type": "number", "description": "clip variation, 0..1" },
+            "option_param1": { "type": "number", "description": "first clip-specific parameter, 0..1" },
+            "option_param2": { "type": "number", "description": "second clip-specific parameter, 0..1" },
+            "is_anime_motion": { "type": "boolean", "description": "the loaded clip declares a variation, so 'pattern' actually reaches the animator" },
+            "is_h_anime": { "type": "boolean", "description": "the loaded clip takes the two option parameters; when false they are stored but do nothing" }
           }
         },
         "kinematic": {
@@ -57,6 +62,15 @@
             "blush": { "type": "number" },
             "look_eyes": { "type": "integer" },
             "look_neck": { "type": "integer" }
+          }
+        },
+        "hands": {
+          "type": ["object", "null"],
+          "description": "hand shapes; 'left' and 'right' round-trip into studio_set_character_hands",
+          "properties": {
+            "left": { "type": "integer", "description": "0 = no hand shape, 1..count = shape index" },
+            "right": { "type": "integer" },
+            "count": { "type": "integer", "description": "number of hand shapes installed; valid range for 'left'/'right' is 0..count, -1 when the shape list is not loaded" }
           }
         },
         "expression": {

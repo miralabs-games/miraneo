@@ -10,7 +10,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 |---|---|---|
 | `studio_get_info` | Runtime info (versions, `studio_loaded`, object count) | works before the Studio scene is ready |
 | `studio_get_scene` | Scene summary: object counts per kind, background/frame | errors with `-32000` until Studio is ready |
-| `studio_list_characters` | All characters: id, name, card full name, sex, visible, transform, anime, kinematic, face, expression | the read-back tool for every character write |
+| `studio_list_characters` | All characters: id, name, card full name, sex, visible, transform, anime, kinematic, face, hands, expression | the read-back tool for every character write |
 | `studio_list_objects` | All scene objects: id, kind, name, visible, parent_id, transform, light state | `parent_id` set for attached objects |
 | `studio_get_camera` | Viewport camera: target pos, angle, distance, fov, world pos/rot | first four round-trip into `studio_set_camera` |
 | `studio_screenshot` | Screenshot of the Studio window, returned as MCP image content | `format` jpg (default) or png, `quality` 1–100 |
@@ -18,6 +18,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_list_scenes` | Saved scenes under `UserData/Studio/scene` | paths feed `studio_load_scene` |
 | `studio_list_character_cards` | Character cards under `UserData/chara/{female,male}` | paths feed `studio_create_character`; first call reads every card, then cached |
 | `studio_list_poses` | Pose files under `UserData/studio/pose` | paths feed `studio_set_character_pose`; each pose is sex-specific |
+| `studio_list_attach_points` | A character's 54 bone anchors: index, name, `available`, ids already attached | **required** before `studio_attach_object`: only `available` points can be used |
 
 ### Write
 
@@ -33,12 +34,22 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_delete_object` | Delete an object and its children | **not** undoable, and clears Studio's undo stack |
 | `studio_create_character` | Add a character from a card path | **not** undoable, and clears the undo stack — same as Studio's own Add menu |
 | `studio_set_character_pose` | Apply a pose file: anime + all IK/FK targets + expression flags | sex-checked against the character |
-| `studio_set_character_anime` | Set only the base animation `(group, category, no[, normalized_time])` | ids from `studio_search_catalog` with `catalog='anime'` |
+| `studio_set_character_anime` | Base animation `(group, category, no[, normalized_time])` and/or playback: `speed`, `pattern`, `option_param1|2` | ids from `studio_search_catalog` with `catalog='anime'`; the playback fields are undoable |
 | `studio_set_character_expression` | Face: eyebrows/eyes/mouth patterns, openings, blink, tears, blush, look-at, expression categories | partial + absolute |
+| `studio_set_character_hands` | Hand shapes, `left` and `right` independently | partial + absolute; `0` disables the shape, `1..hands.count` selects one |
+| `studio_attach_object` | Attach an object to a character bone, an item or a folder — or detach it | omit `parent_id` to detach; **not** undoable and clears the undo stack |
 
-Every write tool takes **absolute** values and applies only the fields present, so repeating a call is idempotent. Item/light creation and transform edits are pushed onto Studio's native `UndoRedoManager`, so they can be undone from the Studio UI; deletion and character creation cannot (Studio NEO V2 has neither a delete command nor an add-character command, and clears the stack itself on the latter).
+Every write tool takes **absolute** values and applies only the fields present, so repeating a call is idempotent. Item/light creation, transform edits and the anime playback settings are pushed onto Studio's native `UndoRedoManager`, so they can be undone from the Studio UI; deletion and character creation cannot (Studio NEO V2 has neither a delete command nor an add-character command, and clears the stack itself on the latter). The remaining character writes — pose, clip load, face, hands — have no command in Studio either, but unlike deletion they leave the stack usable, so they do not clear it.
 
 **Pose vs anime.** They are two different Studio concepts. An *anime* is a clip from the catalog (`OCIChar.LoadAnime`) and only sets the animation. A *pose file* (`PauseCtrl`, `UserData/studio/pose/*.dat`) additionally restores every IK and FK bone target and the expression category flags, and only applies to a character of the sex it was saved for. The anime catalog itself is **not** sex-filtered — Studio does not filter it either.
+
+**Hands are set separately from everything else.** Neither a pose file nor a clip touches the hand shapes, so `studio_set_character_hands` is the only way to change them and its effect survives a later pose or anime. The shapes have no names anywhere in Studio — its own panel shows a bare number — so the tool takes an index and the way to identify a shape is `studio_screenshot`. `0` means "no shape", i.e. the animation drives the fingers; `1..hands.count` select one, `hands.count` coming from `studio_list_characters` (it depends on installed mods, and is `-1` while the shape list is still loading).
+
+**Attaching changes what a transform means.** While an object is attached, its `transform` — both what `studio_list_objects` reports and what `studio_set_object_transform` writes — is in the parent's local space, not world space. `pos: [0,0,0]` puts the object exactly on the bone. Detaching converts back to world space. Because the conversion happens on the object's stored coordinates, every transform still on Studio's undo stack would be replayed in the wrong space, so `studio_attach_object` clears the stack.
+
+Attach points are the same 54 anchors for every character, but the bone behind one depends on the rig, so an unusable point looks identical to a usable one until the object silently ends up at the scene root. `studio_list_attach_points` reports `available` per point and `studio_attach_object` refuses the rest. A point takes either its index or its name (`44` or `"N_Hand_L"`). Objects can also be parented to items and folders, with no attach point.
+
+**Anime playback.** `speed`, `pattern` and `option_param1|2` adjust the clip that is already loaded and can be sent without `(group, category, no)`. `pattern` and the option params reach the animator only for clips that declare them — `anime.is_anime_motion` and `anime.is_h_anime` say whether they will, and otherwise the value is stored but changes nothing. The ranges are Studio's own panel clamps (`speed` 0..3, the rest 0..1) so that a saved scene stays reproducible from the UI.
 
 **Eye and eyebrow patterns are list positions, not asset ids.** Studio's own face panel shows the index inside the character's per-sex pattern list and maps it through the key array, because mods add non-contiguous ids. `studio_set_character_expression` uses that same index space; read `face.eyebrows_count` / `face.eyes_count` from `studio_list_characters` for the valid range.
 
@@ -68,4 +79,4 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-`studio_set_character_hands` (`OCIChar.ChangeHandAnime`), `studio_attach_object` (`TreeNodeCtrl.SetParent`, plus a `studio_list_attach_points` companion), `studio_set_character_kinematics` (`ActiveKinematicMode` / `ActiveIK` / `ActiveFK` + per-bone targets, plus a bone-discovery tool), `execute_batch`.
+`studio_set_character_kinematics` (`ActiveKinematicMode` / `ActiveIK` / `ActiveFK` + per-bone targets, plus a bone-discovery tool), `execute_batch`.

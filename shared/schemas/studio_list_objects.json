@@ -1,5 +1,5 @@
 {
-  "description": "List every object in the Studio scene (characters, items, lights, folders, routes, cameras) with stable id, kind, name, visibility, parent id (for attached objects) and transform.",
+  "description": "List every object in the Studio scene (characters, items, lights, folders, routes, cameras) with stable id, kind, name, visibility, parent id and attach point (for attached objects) and transform.",
   "input": {
     "type": "object",
     "properties": {},
@@ -14,9 +14,18 @@
         "kind": { "type": "string", "enum": ["character", "item", "light", "folder", "route", "camera", "unknown"] },
         "name": { "type": ["string", "null"] },
         "visible": { "type": "boolean" },
-        "parent_id": { "type": ["integer", "null"] },
+        "parent_id": { "type": ["integer", "null"], "description": "the object this one is attached to, null when it stands in world space" },
+        "attach_point": {
+          "type": ["object", "null"],
+          "description": "set only when the parent is a character: which bone anchor holds this object",
+          "properties": {
+            "index": { "type": "integer" },
+            "name": { "type": "string" }
+          }
+        },
         "transform": {
           "type": ["object", "null"],
+          "description": "pos/rot are in the parent's local space when 'parent_id' is set, in world space otherwise",
           "properties": {
             "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
             "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
