@@ -1,5 +1,5 @@
 {
-  "description": "List every character currently present in the Studio scene, with its stable id, display name, card full name, sex, visibility, transform (pos/rot euler/scale), current animation, kinematic mode, face state, hand shapes and expression category flags. This is the tool to call to read back the result of studio_set_character_pose, studio_set_character_anime, studio_set_character_expression and studio_set_character_hands.",
+  "description": "List every character currently present in the Studio scene, with its stable id, display name, card full name, sex, visibility, transform (pos/rot euler/scale), current animation, kinematic mode, face state, hand shapes, a summary of what it is wearing, its state sliders and expression category flags. This is the tool to call to read back the result of studio_set_character_pose, studio_set_character_anime, studio_set_character_expression, studio_set_character_hands and studio_set_character_state. Outfits are summarised here and detailed in studio_list_outfit.",
   "input": {
     "type": "object",
     "properties": {},
@@ -94,6 +94,47 @@
             "left": { "type": "integer", "description": "0 = no hand shape, 1..count = shape index" },
             "right": { "type": "integer" },
             "count": { "type": "integer", "description": "number of hand shapes installed; valid range for 'left'/'right' is 0..count, -1 when the shape list is not loaded" }
+          }
+        },
+        "outfit": {
+          "type": ["object", "null"],
+          "description": "what the character is wearing, in short. The worn item names, the states each slot accepts and the per-slot accessory flags are in studio_list_outfit, which is also what studio_set_character_outfit returns",
+          "properties": {
+            "clothes": {
+              "type": "object",
+              "description": "dressing state per slot ('bot' is the bottom, 'inner_t' the bra, 'inner_b' the shorts, 'panst' the pantyhose)",
+              "properties": {
+                "top": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "bot": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "inner_t": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "inner_b": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "gloves": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "panst": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "socks": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] },
+                "shoes": { "type": ["string", "null"], "enum": ["worn", "half", "off", null] }
+              }
+            },
+            "accessories": {
+              "type": "object",
+              "properties": {
+                "equipped": { "type": "integer", "description": "how many of the 20 accessory slots hold an object" },
+                "shown": { "type": "integer", "description": "how many of those are visible" }
+              }
+            }
+          }
+        },
+        "state": {
+          "type": ["object", "null"],
+          "description": "Studio's per-character state sliders; all fields round-trip into studio_set_character_state",
+          "properties": {
+            "nipple": { "type": ["number", "null"], "description": "nipple stand rate, null on a male character" },
+            "skin_gloss": { "type": "number" },
+            "wet": { "type": "number" },
+            "simple": { "type": "boolean", "description": "the character is drawn as a flat single-colour silhouette" },
+            "simple_color": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+            "son": { "type": "boolean" },
+            "son_length": { "type": "number" },
+            "siru": { "type": ["object", "null"], "description": "body fluid level per area (face, breast, belly, back, hip), 0..2; null on a male character. This is the level that was asked for — it reaches the shaders on the next frame" }
           }
         },
         "expression": {

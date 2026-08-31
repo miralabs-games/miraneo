@@ -173,6 +173,26 @@ namespace MiraStudio.Core
             Categories = BoolMap(p, "expression_categories"),
         };
 
+        public static OutfitPatch Outfit(JsonObject p) => new OutfitPatch
+        {
+            Coordinate = OptString(p, "coordinate"),
+            ClothesAll = OptString(p, "clothes_all"),
+            Clothes = StringMap(p, "clothes", "an object mapping a clothes slot (" + OutfitNames.Join(OutfitNames.Clothes) + ") to a state (" + OutfitNames.Join(OutfitNames.States) + ")"),
+            Accessories = BoolMap(p, "accessories"),
+        };
+
+        public static CharacterStatePatch CharacterState(JsonObject p) => new CharacterStatePatch
+        {
+            Nipple = OptFloat(p, "nipple"),
+            SkinGloss = OptFloat(p, "skin_gloss"),
+            Wet = OptFloat(p, "wet"),
+            Simple = OptBool(p, "simple"),
+            SimpleColor = OptColor(p, "simple_color"),
+            Son = OptBool(p, "son"),
+            SonLength = OptFloat(p, "son_length"),
+            Siru = IntMap(p, "siru", "an object mapping a body part (" + OutfitNames.Join(OutfitNames.Siru) + ") to a level 0..2"),
+        };
+
         public static MapPatch Map(JsonObject p) => new MapPatch
         {
             No = OptIntN(p, "no"),
@@ -371,21 +391,55 @@ namespace MiraStudio.Core
             return list;
         }
 
-        // {"0": true, "3": false} — keys are expression category indices.
+        // {"0": true, "3": false} — keys are indices (expression categories, accessory slots).
         private static System.Collections.Generic.Dictionary<int, bool> BoolMap(JsonObject p, string key)
         {
             var node = p.Get(key);
             if (node == null || node is JsonNull) return null;
             var obj = node as JsonObject;
-            if (obj == null) throw Invalid(key, "an object mapping category index to boolean");
+            if (obj == null) throw Invalid(key, "an object mapping index to boolean");
             var map = new System.Collections.Generic.Dictionary<int, bool>();
             foreach (var name in obj.Keys)
             {
                 int index;
                 var value = obj.Get(name) as JsonBool;
                 if (!int.TryParse(name, out index) || value == null)
-                    throw Invalid(key, "an object mapping category index to boolean");
+                    throw Invalid(key, "an object mapping index to boolean");
                 map[index] = value.Value;
+            }
+            return map;
+        }
+
+        // {"top": "off"} — named entries whose value is a name too.
+        private static Dictionary<string, string> StringMap(JsonObject p, string key, string expected)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var obj = node as JsonObject;
+            if (obj == null) throw Invalid(key, expected);
+            var map = new Dictionary<string, string>();
+            foreach (var name in obj.Keys)
+            {
+                var value = obj.Get(name) as JsonString;
+                if (value == null || string.IsNullOrEmpty(value.Value)) throw Invalid(key, expected);
+                map[name] = value.Value;
+            }
+            return map;
+        }
+
+        // {"face": 2} — named entries whose value is a small integer.
+        private static Dictionary<string, int> IntMap(JsonObject p, string key, string expected)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var obj = node as JsonObject;
+            if (obj == null) throw Invalid(key, expected);
+            var map = new Dictionary<string, int>();
+            foreach (var name in obj.Keys)
+            {
+                var value = obj.Get(name) as JsonNumber;
+                if (value == null) throw Invalid(key, expected);
+                map[name] = (int)value.Value;
             }
             return map;
         }

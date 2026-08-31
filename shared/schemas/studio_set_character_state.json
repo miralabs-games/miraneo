@@ -1,0 +1,31 @@
+{
+  "description": "The rest of Studio's per-character state panel: skin gloss, wetness, the flat single-colour silhouette and its colour, the male part and its length, plus the two female-only settings (nipple stand and body fluids). Partial and absolute. The face sliders of that same panel — tears and blush — live in studio_set_character_expression instead. Read back from 'state' in studio_list_characters. Not undoable from Studio, and it leaves the undo stack usable.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "nipple": { "type": "number", "description": "nipple stand rate; **female only**, refused on a male because Studio's setter does nothing there. Studio's slider covers 0..1 and nothing clamps it in code, so a value outside that is stored and applied as-is" },
+      "skin_gloss": { "type": "number", "minimum": 0, "maximum": 1, "description": "skin glossiness; clamped to 0..1 by Studio" },
+      "wet": { "type": "number", "minimum": 0, "maximum": 1, "description": "wet look; clamped to 0..1 by Studio" },
+      "simple": { "type": "boolean", "description": "draw the character as a flat single-colour silhouette instead of its body" },
+      "simple_color": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 4, "description": "colour of that silhouette, [r,g,b] or [r,g,b,a] in 0..1; can be set while 'simple' is off" },
+      "son": { "type": "boolean", "description": "show the male part; Studio offers this on both sexes" },
+      "son_length": { "type": "number", "description": "its length, 1 = default. Not clamped anywhere in Studio" },
+      "siru": {
+        "type": "object",
+        "description": "body fluids per area, 0 = none, 1 and 2 = increasing. **Female only** — the applier returns immediately on a male. Levels above 2 are refused: they index a three-entry table inside Studio's own update loop a frame later, where an out-of-range value takes the process down rather than erroring here",
+        "properties": {
+          "face": { "type": "integer", "minimum": 0, "maximum": 2 },
+          "breast": { "type": "integer", "minimum": 0, "maximum": 2 },
+          "belly": { "type": "integer", "minimum": 0, "maximum": 2 },
+          "back": { "type": "integer", "minimum": 0, "maximum": 2 },
+          "hip": { "type": "integer", "minimum": 0, "maximum": 2 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters — read back 'state' to confirm" }
+}

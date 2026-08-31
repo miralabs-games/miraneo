@@ -9,6 +9,10 @@ import searchCatalog from "../../shared/schemas/studio_search_catalog.json";
 import listScenes from "../../shared/schemas/studio_list_scenes.json";
 import listCharacterCards from "../../shared/schemas/studio_list_character_cards.json";
 import listPoses from "../../shared/schemas/studio_list_poses.json";
+import listCoordinates from "../../shared/schemas/studio_list_coordinates.json";
+import listOutfit from "../../shared/schemas/studio_list_outfit.json";
+import setCharacterOutfit from "../../shared/schemas/studio_set_character_outfit.json";
+import setCharacterState from "../../shared/schemas/studio_set_character_state.json";
 import createCharacter from "../../shared/schemas/studio_create_character.json";
 import setCharacterPose from "../../shared/schemas/studio_set_character_pose.json";
 import setCharacterAnime from "../../shared/schemas/studio_set_character_anime.json";
@@ -69,6 +73,8 @@ export const TOOLS: ToolDef[] = [
   def("studio_list_scenes", listScenes, 15000),
   def("studio_list_character_cards", listCharacterCards, 240000),
   def("studio_list_poses", listPoses, 240000),
+  def("studio_list_coordinates", listCoordinates, 240000),
+  def("studio_list_outfit", listOutfit, 15000),
   def("studio_list_attach_points", listAttachPoints, 15000),
   def("studio_list_bones", listBones, 15000),
   def("studio_list_overlays", listOverlays, 15000),
@@ -85,6 +91,8 @@ export const TOOLS: ToolDef[] = [
   def("studio_set_character_anime", setCharacterAnime, 90000),
   def("studio_set_character_expression", setCharacterExpression, 15000),
   def("studio_set_character_hands", setCharacterHands, 15000),
+  def("studio_set_character_outfit", setCharacterOutfit, 180000),
+  def("studio_set_character_state", setCharacterState, 15000),
   def("studio_set_character_kinematics", setCharacterKinematics, 30000),
   def("studio_set_character_bone", setCharacterBone, 15000),
   def("studio_set_character_ik", setCharacterIk, 15000),

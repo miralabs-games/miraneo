@@ -1,0 +1,34 @@
+{
+  "description": "Dress a character: load a whole outfit (coordinate), change how each of the eight clothes slots is worn, and show or hide accessories. Partial and absolute — only the fields you pass are applied. Read studio_list_outfit first: which states a slot accepts depends on the garment worn there, and only equipped accessory slots can be toggled; both are refused rather than silently turned into something else, because Studio's own setter walks to the next state a slot does accept without saying so. Order inside one call is fixed: 'coordinate' first (it replaces the clothes and the accessories, and therefore what the rest of the patch is checked against), then 'clothes_all', then 'clothes', then 'accessories'. Not undoable from Studio — it has no command for any of this — but it leaves the undo stack usable. Two things change with the outfit: the FK skirt bones are re-weighted (re-read studio_list_bones after a coordinate change), and the result only reaches the screen on the next frame, so a studio_screenshot fired in the same batch can still show the old clothes.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "coordinate": { "type": "string", "description": "outfit file path from studio_list_coordinates, e.g. 'female/school.png'; a bare name is resolved against the character's own folder. Must match the character's sex — outfit files carry no sex marker, so the folder is the only check there is. An unreadable file is refused instead of silently doing nothing. It replaces the clothes and the accessories but **not** the dressing states: a slot left 'off' by a previous outfit stays 'off' under the new one, so pass 'clothes_all': 'worn' in the same call to start dressed" },
+      "clothes_all": { "type": "string", "enum": ["worn", "half", "off"], "description": "apply one state to all eight slots, like Studio's three dressing buttons. Per slot it falls back to a state that slot accepts, so it is deliberately not validated the way 'clothes' is" },
+      "clothes": {
+        "type": "object",
+        "description": "per-slot dressing state; unlisted slots are left alone. A slot that does not accept the state is refused (see 'states' in studio_list_outfit)",
+        "properties": {
+          "top": { "type": "string", "enum": ["worn", "half", "off"] },
+          "bot": { "type": "string", "enum": ["worn", "half", "off"] },
+          "inner_t": { "type": "string", "enum": ["worn", "half", "off"], "description": "the bra" },
+          "inner_b": { "type": "string", "enum": ["worn", "half", "off"], "description": "the shorts" },
+          "gloves": { "type": "string", "enum": ["worn", "half", "off"] },
+          "panst": { "type": "string", "enum": ["worn", "half", "off"], "description": "the pantyhose" },
+          "socks": { "type": "string", "enum": ["worn", "half", "off"] },
+          "shoes": { "type": "string", "enum": ["worn", "half", "off"] }
+        },
+        "additionalProperties": false
+      },
+      "accessories": {
+        "type": "object",
+        "description": "accessory visibility keyed by slot number as a string, e.g. {\"0\": false, \"3\": true}. Empty slots are refused: Studio would store the flag and show nothing",
+        "additionalProperties": { "type": "boolean" }
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character's outfit after the change, same shape as studio_list_outfit — read every slot back, not just the ones you set: a garment that covers two slots moves both" }
+}

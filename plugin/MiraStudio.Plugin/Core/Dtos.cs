@@ -344,6 +344,154 @@ namespace MiraStudio.Core
             .Add("count", Count);
     }
 
+    // Clothes slots in ChaFileDefine.ClothesKind order (the index ChaControl.SetClothesState
+    // takes), the three dressing states in ChaFileStatus.clothesState order, and the liquid
+    // parts in ChaFileDefine.SiruParts order.
+    public static class OutfitNames
+    {
+        public static readonly string[] Clothes = { "top", "bot", "inner_t", "inner_b", "gloves", "panst", "socks", "shoes" };
+        public static readonly string[] States = { "worn", "half", "off" };
+        public static readonly string[] Siru = { "face", "breast", "belly", "back", "hip" };
+
+        public static int Index(string[] names, string name)
+        {
+            for (var i = 0; i < names.Length; i++)
+                if (names[i] == name) return i;
+            return -1;
+        }
+
+        public static string Join(string[] names)
+        {
+            return string.Join(", ", names);
+        }
+    }
+
+    public sealed class CoordinateFileDto
+    {
+        public string Path, Name, Sex, Modified;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("path", Path)
+            .Add("name", Name)
+            .Add("sex", Sex)
+            .Add("modified", Modified);
+    }
+
+    public sealed class ClothesSlotDto
+    {
+        public int Index;
+        public string Slot, Name, State, LinkedTo;
+        public bool Equipped;
+        public string[] States;
+
+        public JsonNode ToJson()
+        {
+            var states = new JsonArray();
+            if (States != null)
+                foreach (var s in States) states.Add(s);
+            return new JsonObject()
+                .Add("slot", Slot)
+                .Add("index", Index)
+                .Add("name", Name)
+                .Add("equipped", Equipped)
+                .Add("state", State)
+                .Add("states", states)
+                .Add("linked_to", LinkedTo);
+        }
+    }
+
+    public sealed class AccessorySlotDto
+    {
+        public int Slot;
+        public string Name, Parent;
+        public bool Equipped, Shown;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("slot", Slot)
+            .Add("name", Name)
+            .Add("parent", Parent)
+            .Add("equipped", Equipped)
+            .Add("shown", Shown);
+    }
+
+    public sealed class OutfitDto
+    {
+        public int CharacterId;
+        public string Sex;
+        public System.Collections.Generic.List<ClothesSlotDto> Clothes;
+        public System.Collections.Generic.List<AccessorySlotDto> Accessories;
+
+        public JsonNode ToJson()
+        {
+            var clothes = new JsonArray();
+            if (Clothes != null)
+                foreach (var c in Clothes) clothes.Add(c.ToJson());
+            var accessories = new JsonArray();
+            if (Accessories != null)
+                foreach (var a in Accessories) accessories.Add(a.ToJson());
+            return new JsonObject()
+                .Add("character_id", CharacterId)
+                .Add("sex", Sex)
+                .Add("clothes", clothes)
+                .Add("accessories", accessories);
+        }
+    }
+
+    // The compact form studio_list_characters carries: the eight states and how many
+    // accessory slots are filled and shown. Worn item names, the states each slot
+    // actually accepts and the per-slot accessory flags are in studio_list_outfit.
+    public sealed class OutfitSummaryDto
+    {
+        public string[] Clothes;
+        public int AccessoriesEquipped, AccessoriesShown;
+
+        public JsonNode ToJson()
+        {
+            var clothes = new JsonObject();
+            if (Clothes != null)
+                for (var i = 0; i < OutfitNames.Clothes.Length && i < Clothes.Length; i++)
+                    clothes.Add(OutfitNames.Clothes[i], Clothes[i]);
+            return new JsonObject()
+                .Add("clothes", clothes)
+                .Add("accessories", new JsonObject()
+                    .Add("equipped", AccessoriesEquipped)
+                    .Add("shown", AccessoriesShown));
+        }
+    }
+
+    // Studio's per-character state panel, minus the face sliders (they belong to
+    // studio_set_character_expression). 'nipple' and 'siru' are female-only: their
+    // setters are no-ops on a male.
+    public sealed class CharacterStateDto
+    {
+        public float? Nipple;
+        public float SkinGloss, Wet, SonLength;
+        public bool Simple, Son;
+        public float[] SimpleColor;
+        public byte[] Siru;
+
+        public JsonNode ToJson()
+        {
+            JsonNode siru = JsonNull.Instance;
+            if (Siru != null)
+            {
+                var obj = new JsonObject();
+                for (var i = 0; i < OutfitNames.Siru.Length && i < Siru.Length; i++)
+                    obj.Add(OutfitNames.Siru[i], (int)Siru[i]);
+                siru = obj;
+            }
+            return new JsonObject()
+                .Add("nipple", J.N(Nipple))
+                .Add("skin_gloss", SkinGloss)
+                .Add("wet", Wet)
+                .Add("simple", Simple)
+                .Add("simple_color", J.Color(SimpleColor))
+                .Add("son", Son)
+                .Add("son_length", SonLength)
+                .Add("siru", siru);
+        }
+    }
+
     // Group names for the two kinematic chains, in the exact order Studio indexes
     // them: activeIK by bit position of OIBoneInfo.BoneGroup, activeFK by FKCtrl.parts.
     public static class KinematicGroups
@@ -483,6 +631,8 @@ namespace MiraStudio.Core
         public KinematicDto Kinematic;
         public FaceDto Face;
         public HandsDto Hands;
+        public OutfitSummaryDto Outfit;
+        public CharacterStateDto State;
         public bool[] Expression;
 
         public JsonNode ToJson() => new JsonObject()
@@ -496,6 +646,8 @@ namespace MiraStudio.Core
             .Add("kinematic", Kinematic != null ? Kinematic.ToJson() : JsonNull.Instance)
             .Add("face", Face != null ? Face.ToJson() : JsonNull.Instance)
             .Add("hands", Hands != null ? Hands.ToJson() : JsonNull.Instance)
+            .Add("outfit", Outfit != null ? Outfit.ToJson() : JsonNull.Instance)
+            .Add("state", State != null ? State.ToJson() : JsonNull.Instance)
             .Add("expression", KinematicDto.Bools(Expression));
     }
 
@@ -738,6 +890,34 @@ namespace MiraStudio.Core
         public string Background, Frame;
 
         public bool IsEmpty => Background == null && Frame == null;
+    }
+
+    // 'Coordinate' is applied first and on its own frame of reference: loading one
+    // rebuilds which states each slot accepts and which accessory slots are filled,
+    // so the rest of the patch can only be checked once it has landed.
+    public sealed class OutfitPatch
+    {
+        public string Coordinate, ClothesAll;
+        public System.Collections.Generic.Dictionary<string, string> Clothes;
+        public System.Collections.Generic.Dictionary<int, bool> Accessories;
+
+        public bool IsEmpty =>
+            Coordinate == null && ClothesAll == null &&
+            (Clothes == null || Clothes.Count == 0) &&
+            (Accessories == null || Accessories.Count == 0);
+    }
+
+    public sealed class CharacterStatePatch
+    {
+        public float? Nipple, SkinGloss, Wet, SonLength;
+        public bool? Simple, Son;
+        public float[] SimpleColor;
+        public System.Collections.Generic.Dictionary<string, int> Siru;
+
+        public bool IsEmpty =>
+            !Nipple.HasValue && !SkinGloss.HasValue && !Wet.HasValue && !SonLength.HasValue &&
+            !Simple.HasValue && !Son.HasValue && SimpleColor == null &&
+            (Siru == null || Siru.Count == 0);
     }
 
     public sealed class ExpressionPatch

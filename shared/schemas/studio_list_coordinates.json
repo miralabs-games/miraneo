@@ -1,0 +1,24 @@
+{
+  "description": "List the outfits (coordinates) saved under UserData/coordinate/{female,male} — the files Studio's own costume tab offers. Paths feed studio_set_character_outfit's 'coordinate'. An outfit file carries no sex marker of its own, so the folder is the only signal: a female outfit on a male character is refused on the path, not on the content. The first call reads the header of every file once (~2000 of them) and is then served from cache until a file changes on disk.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "sex": { "type": "string", "enum": ["female", "male"], "description": "restrict to one folder; omit for both" },
+      "query": { "type": "string", "description": "case-insensitive substring matched against the outfit name and its path" },
+      "limit": { "type": "integer", "minimum": 1, "default": 100 }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string", "description": "path relative to UserData/coordinate, e.g. 'female/school.png' — pass it as-is to studio_set_character_outfit" },
+        "name": { "type": "string", "description": "the name stored in the file, which is what Studio's list shows; it is NOT kept anywhere once the outfit is worn, so it cannot be read back from a character" },
+        "sex": { "type": "string", "enum": ["female", "male"] },
+        "modified": { "type": "string", "description": "file mtime, ISO-8601 UTC" }
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "description": "What one character is wearing: the eight clothes slots with the item worn in each, the dressing state it is in and the states it actually accepts, plus the twenty accessory slots with their item, their parent bone and whether they are shown. Call this before studio_set_character_outfit: which states a slot takes depends on the garment worn there (some have no half-off state, some have none at all), and only equipped accessory slots can be toggled.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "character_id": { "type": "integer" },
+      "sex": { "type": "string", "enum": ["male", "female", "unknown"] },
+      "clothes": {
+        "type": "array",
+        "description": "the eight slots, always in this order",
+        "items": {
+          "type": "object",
+          "properties": {
+            "slot": { "type": "string", "enum": ["top", "bot", "inner_t", "inner_b", "gloves", "panst", "socks", "shoes"], "description": "Studio's own slot names: 'bot' is the bottom, 'inner_t' the bra, 'inner_b' the shorts, 'panst' the pantyhose" },
+            "index": { "type": "integer", "description": "the slot's position in Studio's clothes enum" },
+            "name": { "type": ["string", "null"], "description": "the garment worn there, in the game's language; null when Studio loaded nothing at all in the slot" },
+            "equipped": { "type": "boolean", "description": "Studio has a garment object in this slot. The catalog's explicit 'None' entry counts as one, so a slot can be equipped and still show nothing — 'states' is what says whether the slot can be dressed or undressed" },
+            "state": { "type": ["string", "null"], "enum": ["worn", "half", "off", null], "description": "how it is currently worn" },
+            "states": { "type": "array", "items": { "type": "string", "enum": ["worn", "half", "off"] }, "description": "the states this garment accepts. **An empty list means the slot has no dressing states at all** — nothing is worn there, or the garment declares none — and studio_set_character_outfit refuses it rather than letting Studio store a state that changes nothing" },
+            "linked_to": { "type": ["string", "null"], "description": "the sibling slot this one is coupled to, when one garment covers both (a full-body top and 'bot', a one-piece underwear and 'inner_b'). Setting either slot to 'off' takes the other with it — the coupling lives in Studio, not here" }
+          }
+        }
+      },
+      "accessories": {
+        "type": "array",
+        "description": "the twenty accessory slots, always all of them",
+        "items": {
+          "type": "object",
+          "properties": {
+            "slot": { "type": "integer", "minimum": 0, "maximum": 19, "description": "the key studio_set_character_outfit's 'accessories' takes" },
+            "name": { "type": ["string", "null"], "description": "the accessory in this slot, null when empty" },
+            "parent": { "type": ["string", "null"], "description": "the bone it is attached to, in the same name space as studio_list_attach_points; null on an empty slot" },
+            "equipped": { "type": "boolean", "description": "the slot holds an object. **An empty slot cannot be toggled**: Studio stores the flag and shows nothing" },
+            "shown": { "type": "boolean", "description": "the accessory is visible" }
+          }
+        }
+      }
+    }
+  }
+}

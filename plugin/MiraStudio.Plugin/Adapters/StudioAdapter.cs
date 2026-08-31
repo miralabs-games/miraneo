@@ -559,6 +559,355 @@ namespace MiraStudio.Adapters
             return ToCharacterDto(id, chr);
         }
 
+        public static List<CoordinateFileDto> ListCoordinates(string sex, string query, int limit)
+        {
+            if (sex != null && sex != "female" && sex != "male")
+                throw new StudioApiException(StudioApiException.InvalidParams, "parameter 'sex' must be 'female' or 'male'");
+            var list = new List<CoordinateFileDto>();
+            foreach (var folder in new[] { "female", "male" })
+            {
+                if (sex != null && sex != folder) continue;
+                var root = Path.Combine(CoordinateRoot(), folder);
+                if (!Directory.Exists(root)) continue;
+                foreach (var file in Directory.GetFiles(root, "*.png", SearchOption.AllDirectories))
+                {
+                    var dto = ReadCoordinate(file, folder);
+                    if (dto == null) continue;
+                    if (!Matches(query, dto.Name, dto.Path)) continue;
+                    list.Add(dto);
+                    if (list.Count >= limit) return list;
+                }
+            }
+            return list;
+        }
+
+        public static OutfitDto ListOutfit(int id) => ToOutfitDto(id, RequireCharacter(id));
+
+        public static OutfitDto SetCharacterOutfit(int id, OutfitPatch patch)
+        {
+            var chr = RequireCharacter(id);
+            if (patch == null || patch.IsEmpty) return ToOutfitDto(id, chr);
+
+            // Names first: they are wrong or right whatever is worn.
+            byte? all = null;
+            if (patch.ClothesAll != null) all = RequireClothesState(patch.ClothesAll, "clothes_all");
+            var states = new List<KeyValuePair<int, byte>>();
+            if (patch.Clothes != null)
+                foreach (var kv in patch.Clothes)
+                    states.Add(new KeyValuePair<int, byte>(RequireClothesSlot(kv.Key), RequireClothesState(kv.Value, "clothes." + kv.Key)));
+
+            if (patch.Coordinate != null)
+            {
+                var sex = chr.oiCharInfo.sex;
+                var full = ResolveCoordinatePath(patch.Coordinate, sex);
+                // OCIChar.LoadClothesFile drops the two bools underneath it
+                // (ChangeNowCoordinate's and Reload's), so an unreadable file would
+                // silently leave the character dressed as it was. Reading the header
+                // here is the same LoadFile ChangeNowCoordinate is about to do.
+                var probe = new AIChara.ChaFileCoordinate();
+                if (!probe.LoadFile(full))
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "not a readable coordinate file (error " + probe.GetLastErrorCode() + "): " + full);
+                // Always the virtual: on a female it also refreshes bust softness, the
+                // skirt dynamic bones and the FK skirt group, whose bone weights depend
+                // on the garment that was just put on.
+                chr.LoadClothesFile(full);
+            }
+
+            // Which states a slot accepts and which accessory slots are filled both
+            // depend on what is worn, and the coordinate above has just changed that,
+            // so this is the earliest point the rest of the patch can be checked — and
+            // still before a single write, so a bad entry applies none of them.
+            foreach (var kv in states) RequireSlotAccepts(chr, kv.Key, kv.Value);
+            if (patch.Accessories != null)
+                foreach (var kv in patch.Accessories) RequireAccessorySlot(chr, kv.Key);
+
+            // Studio's own three "cos state" buttons do exactly this, and per slot
+            // SetClothesState falls back to a state the slot does accept, so the bulk
+            // value is deliberately not validated against every slot.
+            if (all.HasValue) chr.SetClothesStateAll(all.Value);
+            foreach (var kv in states) chr.SetClothesState(kv.Key, kv.Value);
+            if (patch.Accessories != null)
+                foreach (var kv in patch.Accessories) chr.ShowAccessory(kv.Key, kv.Value);
+
+            return ToOutfitDto(id, chr);
+        }
+
+        public static CharacterDto SetCharacterState(int id, CharacterStatePatch patch)
+        {
+            var chr = RequireCharacter(id);
+            if (patch == null || patch.IsEmpty) return ToCharacterDto(id, chr);
+
+            var female = chr.oiCharInfo.sex == 1;
+            if (patch.Nipple.HasValue && !female)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "'nipple' only applies to female characters: OCIChar.SetNipStand does nothing on a male");
+            if (patch.Siru != null && !female)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "'siru' only applies to female characters: ChaControl.UpdateSiru returns immediately on a male");
+
+            // A level is used as an index into a float[3] by UpdateSiru, which runs on
+            // the next frame inside Studio's own update loop: an out-of-range level
+            // takes the process down there rather than here, so every part is checked
+            // before any is written.
+            var siru = new List<KeyValuePair<int, byte>>();
+            if (patch.Siru != null)
+                foreach (var kv in patch.Siru)
+                {
+                    var part = OutfitNames.Index(OutfitNames.Siru, kv.Key);
+                    if (part < 0)
+                        throw new StudioApiException(StudioApiException.InvalidParams,
+                            "unknown siru part '" + kv.Key + "'; expected one of " + OutfitNames.Join(OutfitNames.Siru));
+                    if (kv.Value < 0 || kv.Value > 2)
+                        throw new StudioApiException(StudioApiException.InvalidParams,
+                            "siru." + kv.Key + " must be 0 (none), 1 or 2");
+                    siru.Add(new KeyValuePair<int, byte>(part, (byte)kv.Value));
+                }
+
+            if (patch.Nipple.HasValue) chr.SetNipStand(patch.Nipple.Value);
+            if (patch.SkinGloss.HasValue) chr.SetTuyaRate(patch.SkinGloss.Value);
+            if (patch.Wet.HasValue) chr.SetWetRate(patch.Wet.Value);
+            if (patch.Simple.HasValue) chr.SetVisibleSimple(patch.Simple.Value);
+            if (patch.SimpleColor != null) chr.SetSimpleColor(Col(patch.SimpleColor));
+            if (patch.Son.HasValue) chr.SetVisibleSon(patch.Son.Value);
+            if (patch.SonLength.HasValue) chr.SetSonLength(patch.SonLength.Value);
+            foreach (var kv in siru)
+                chr.SetSiruFlags((AIChara.ChaFileDefine.SiruParts)kv.Key, kv.Value);
+
+            return ToCharacterDto(id, chr);
+        }
+
+        private static OutfitDto ToOutfitDto(int id, SNeo.OCIChar chr)
+        {
+            var ci = chr.charInfo;
+            var status = chr.charFileStatus;
+            var dto = new OutfitDto
+            {
+                CharacterId = id,
+                Sex = SafeSex(chr),
+                Clothes = new List<ClothesSlotDto>(),
+                Accessories = new List<AccessorySlotDto>(),
+            };
+            for (var i = 0; i < OutfitNames.Clothes.Length; i++)
+            {
+                var state = i < status.clothesState.Length ? status.clothesState[i] : (byte)0;
+                dto.Clothes.Add(new ClothesSlotDto
+                {
+                    Index = i,
+                    Slot = OutfitNames.Clothes[i],
+                    Name = ClothesName(ci, i),
+                    Equipped = ClothesEquipped(ci, i),
+                    State = state < OutfitNames.States.Length ? OutfitNames.States[state] : null,
+                    States = ClothesStates(ci, i),
+                    LinkedTo = LinkedSlot(ci, i),
+                });
+            }
+            var parts = ci.nowCoordinate != null && ci.nowCoordinate.accessory != null ? ci.nowCoordinate.accessory.parts : null;
+            for (var slot = 0; slot < status.showAccessory.Length; slot++)
+                dto.Accessories.Add(new AccessorySlotDto
+                {
+                    Slot = slot,
+                    Name = AccessoryName(ci, slot),
+                    // An empty slot keeps PartsInfo's default "", which reads as a
+                    // parent bone that does not exist.
+                    Parent = parts != null && slot < parts.Length && !string.IsNullOrEmpty(parts[slot].parentKey) ? parts[slot].parentKey : null,
+                    Equipped = AccessoryEquipped(ci, slot),
+                    Shown = status.showAccessory[slot],
+                });
+            return dto;
+        }
+
+        private static OutfitSummaryDto SafeOutfit(SNeo.OCIChar chr)
+        {
+            try
+            {
+                var ci = chr.charInfo;
+                var status = chr.charFileStatus;
+                var dto = new OutfitSummaryDto { Clothes = new string[OutfitNames.Clothes.Length] };
+                for (var i = 0; i < dto.Clothes.Length && i < status.clothesState.Length; i++)
+                {
+                    var state = status.clothesState[i];
+                    dto.Clothes[i] = state < OutfitNames.States.Length ? OutfitNames.States[state] : null;
+                }
+                for (var slot = 0; slot < status.showAccessory.Length; slot++)
+                {
+                    if (!AccessoryEquipped(ci, slot)) continue;
+                    dto.AccessoriesEquipped++;
+                    if (status.showAccessory[slot]) dto.AccessoriesShown++;
+                }
+                return dto;
+            }
+            catch { return null; }
+        }
+
+        private static CharacterStateDto SafeState(SNeo.OCIChar chr)
+        {
+            try
+            {
+                var oi = chr.oiCharInfo;
+                var female = oi.sex == 1;
+                return new CharacterStateDto
+                {
+                    Nipple = female ? (float?)oi.nipple : null,
+                    SkinGloss = oi.SkinTuyaRate,
+                    Wet = oi.WetRate,
+                    Simple = chr.GetVisibleSimple(),
+                    SimpleColor = C(oi.simpleColor),
+                    Son = oi.visibleSon,
+                    SonLength = chr.GetSonLength(),
+                    // oiCharInfo.siru is what SetSiruFlags writes and what a scene load
+                    // pushes back into the character (AddObjectAssist.UpdateState), and
+                    // unlike ChaFileStatus.siruLv it is up to date in the same frame.
+                    Siru = female ? (byte[])oi.siru.Clone() : null,
+                };
+            }
+            catch { return null; }
+        }
+
+        private static string ClothesName(AIChara.ChaControl ci, int kind)
+        {
+            try
+            {
+                var info = ci.infoClothes[kind];
+                return info != null ? info.Name : null;
+            }
+            catch { return null; }
+        }
+
+        private static bool ClothesEquipped(AIChara.ChaControl ci, int kind)
+        {
+            try { return ci.objClothes[kind] != null; }
+            catch { return false; }
+        }
+
+        private static string AccessoryName(AIChara.ChaControl ci, int slot)
+        {
+            try
+            {
+                var info = ci.infoAccessory[slot];
+                return info != null ? info.Name : null;
+            }
+            catch { return null; }
+        }
+
+        private static bool AccessoryEquipped(AIChara.ChaControl ci, int slot)
+        {
+            try { return ci.objAccessory[slot] != null; }
+            catch { return false; }
+        }
+
+        // A slot with no garment, or one whose garment declares a StateType above 1,
+        // gets no entry in dictStateType at all: SetClothesState then stores the raw
+        // byte and nothing happens on screen.
+        private static string[] ClothesStates(AIChara.ChaControl ci, int kind)
+        {
+            try
+            {
+                var kinds = ci.GetClothesStateKind(kind);
+                if (kinds == null) return new string[0];
+                var list = new List<string>();
+                for (byte state = 0; state < OutfitNames.States.Length; state++)
+                    if (kinds.ContainsKey(state)) list.Add(OutfitNames.States[state]);
+                return list.ToArray();
+            }
+            catch { return new string[0]; }
+        }
+
+        // SetClothesState mirrors 'off' onto the sibling slot when one garment covers
+        // both: top↔bot while notBot, inner_t↔inner_b while notInnerB. Writing one of
+        // a linked pair therefore changes the other, which is why the read-back returns
+        // every slot rather than the ones that were asked for.
+        private static string LinkedSlot(AIChara.ChaControl ci, int kind)
+        {
+            try
+            {
+                if (ci.notBot && kind == 0) return OutfitNames.Clothes[1];
+                if (ci.notBot && kind == 1) return OutfitNames.Clothes[0];
+                if (ci.notInnerB && kind == 2) return OutfitNames.Clothes[3];
+                if (ci.notInnerB && kind == 3) return OutfitNames.Clothes[2];
+            }
+            catch { }
+            return null;
+        }
+
+        private static int RequireClothesSlot(string slot)
+        {
+            var index = OutfitNames.Index(OutfitNames.Clothes, slot);
+            if (index < 0)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "unknown clothes slot '" + slot + "'; expected one of " + OutfitNames.Join(OutfitNames.Clothes));
+            return index;
+        }
+
+        private static byte RequireClothesState(string state, string param)
+        {
+            var index = OutfitNames.Index(OutfitNames.States, state);
+            if (index < 0)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "parameter '" + param + "' must be one of " + OutfitNames.Join(OutfitNames.States));
+            return (byte)index;
+        }
+
+        // ChaControl.SetClothesState never refuses a state: it walks (state + 1) % 3
+        // until it finds one the slot accepts, so an unsupported value is applied as a
+        // different one without a word. Checking here is the only way a caller learns.
+        private static void RequireSlotAccepts(SNeo.OCIChar chr, int kind, byte state)
+        {
+            var available = ClothesStates(chr.charInfo, kind);
+            if (Array.IndexOf(available, OutfitNames.States[state]) >= 0) return;
+            var slot = OutfitNames.Clothes[kind];
+            throw new StudioApiException(StudioApiException.InvalidParams, available.Length == 0
+                ? "clothes slot '" + slot + "' has no dressing states on this outfit (nothing is worn there, or the garment has none) — use studio_list_outfit to see which slots do"
+                : "clothes slot '" + slot + "' does not accept state '" + OutfitNames.States[state] + "'; this garment only takes " + string.Join(", ", available));
+        }
+
+        // OCIChar.ShowAccessory writes charFileStatus.showAccessory[id] with no bounds
+        // check of its own, and an empty slot stores the flag and shows nothing:
+        // ChaControl.UpdateVisible only walks the slots that hold an object.
+        private static void RequireAccessorySlot(SNeo.OCIChar chr, int slot)
+        {
+            var count = chr.charFileStatus.showAccessory.Length;
+            if (slot < 0 || slot >= count)
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "accessory slot " + slot + " is out of range (0.." + (count - 1) + ")");
+            if (!AccessoryEquipped(chr.charInfo, slot))
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "accessory slot " + slot + " is empty on this character; use studio_list_outfit to see which slots are equipped");
+        }
+
+        // Coordinate files carry no sex marker of their own — unlike pose files, which
+        // have an identifying code — so the folder is the only signal there is.
+        private static string ResolveCoordinatePath(string path, int sex)
+        {
+            if (string.IsNullOrEmpty(path))
+                throw new StudioApiException(StudioApiException.InvalidParams, "parameter 'coordinate' must be a non-empty string");
+
+            var normalized = path.Replace('/', '\\');
+            string folder = null;
+            if (normalized.StartsWith("female\\", StringComparison.OrdinalIgnoreCase)) folder = "female";
+            else if (normalized.StartsWith("male\\", StringComparison.OrdinalIgnoreCase)) folder = "male";
+            else if (Path.IsPathRooted(normalized))
+            {
+                var parent = Path.GetFileName(Path.GetDirectoryName(normalized));
+                if (string.Equals(parent, "female", StringComparison.OrdinalIgnoreCase)) folder = "female";
+                else if (string.Equals(parent, "male", StringComparison.OrdinalIgnoreCase)) folder = "male";
+            }
+
+            if (folder != null && folder != SexName(sex))
+                throw new StudioApiException(StudioApiException.InvalidParams,
+                    "coordinate '" + path + "' is a " + folder + " outfit, but the character is " + SexName(sex));
+
+            var candidate = Path.IsPathRooted(normalized)
+                ? normalized
+                : Path.Combine(CoordinateRoot(), folder != null ? normalized : Path.Combine(SexName(sex), normalized));
+            if (!File.Exists(candidate) && !candidate.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                candidate += ".png";
+            if (!File.Exists(candidate))
+                throw new StudioApiException(StudioApiException.NotFound,
+                    "coordinate file not found: " + candidate + " (use studio_list_coordinates to see available outfits)");
+            return candidate;
+        }
+
         public static CameraDto SetCamera(CameraPatch patch)
         {
             var studio = Require();
@@ -1799,6 +2148,8 @@ namespace MiraStudio.Adapters
 
         private static string PoseRoot() => UserData.Create(SNeo.PauseCtrl.savePath);
 
+        private static string CoordinateRoot() => Path.Combine(UserData.Path, "coordinate");
+
         // Reading a card means deserialising it (Studio does the same in
         // CharaList.InitFemaleList); the result is cached per file+timestamp so a
         // full 1000-card sweep is only paid on the first call.
@@ -1810,6 +2161,7 @@ namespace MiraStudio.Adapters
 
         private static readonly Dictionary<string, Cached<CharacterCardDto>> CardCache = new Dictionary<string, Cached<CharacterCardDto>>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<string, Cached<PoseFileDto>> PoseCache = new Dictionary<string, Cached<PoseFileDto>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, Cached<CoordinateFileDto>> CoordinateCache = new Dictionary<string, Cached<CoordinateFileDto>>(StringComparer.OrdinalIgnoreCase);
 
         private static CharacterCardDto ReadCard(string file, string folder)
         {
@@ -1868,6 +2220,51 @@ namespace MiraStudio.Adapters
 
             PoseCache[file] = new Cached<PoseFileDto> { Stamp = stamp, Dto = dto };
             return dto;
+        }
+
+        private static CoordinateFileDto ReadCoordinate(string file, string folder)
+        {
+            var stamp = File.GetLastWriteTimeUtc(file).Ticks;
+            Cached<CoordinateFileDto> cached;
+            if (CoordinateCache.TryGetValue(file, out cached) && cached.Stamp == stamp)
+                return cached.Dto;
+
+            CoordinateFileDto dto = null;
+            try
+            {
+                var name = ReadCoordinateName(file);
+                if (name != null)
+                    dto = new CoordinateFileDto
+                    {
+                        Path = folder + "/" + file.Substring(Path.Combine(CoordinateRoot(), folder).Length).TrimStart('\\', '/').Replace('\\', '/'),
+                        Name = name,
+                        Sex = folder,
+                        Modified = new DateTime(stamp, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture),
+                    };
+            }
+            catch { dto = null; }
+
+            CoordinateCache[file] = new Cached<CoordinateFileDto> { Stamp = stamp, Dto = dto };
+            return dto;
+        }
+
+        // Studio's own outfit list deserialises every file through ChaFileCoordinate.LoadFile
+        // just to read its name (MPCharCtrl.CostumeInfo.InitFileList), which is two thousand
+        // MessagePack payloads for one string. This reads the same header LoadFile reads and
+        // stops before the payload; null means the file is not a coordinate this build can load.
+        private static string ReadCoordinateName(string file)
+        {
+            using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read))
+            using (var reader = new BinaryReader(stream))
+            {
+                PngFile.SkipPng(reader);
+                if (reader.BaseStream.Length - reader.BaseStream.Position == 0L) return null;
+                if (reader.ReadInt32() > 100) return null;
+                if (reader.ReadString() != "【AIS_Clothes】") return null;
+                if (new Version(reader.ReadString()) > AIChara.ChaFileDefine.ChaFileClothesVersion) return null;
+                reader.ReadInt32();
+                return reader.ReadString();
+            }
         }
 
         public static string ResolvePosePath(string path)
@@ -2012,6 +2409,8 @@ namespace MiraStudio.Adapters
             Kinematic = SafeKinematic(chr),
             Face = SafeFace(chr),
             Hands = SafeHands(chr),
+            Outfit = SafeOutfit(chr),
+            State = SafeState(chr),
             Expression = SafeExpression(chr),
         };
 

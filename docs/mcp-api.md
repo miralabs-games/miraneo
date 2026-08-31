@@ -18,6 +18,8 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_list_scenes` | Saved scenes under `UserData/Studio/scene` | paths feed `studio_load_scene` |
 | `studio_list_character_cards` | Character cards under `UserData/chara/{female,male}` | paths feed `studio_create_character`; first call reads every card, then cached |
 | `studio_list_poses` | Pose files under `UserData/studio/pose` | paths feed `studio_set_character_pose`; each pose is sex-specific |
+| `studio_list_coordinates` | Outfit files under `UserData/coordinate/{female,male}` | paths feed `studio_set_character_outfit`; header-only read, so the ~2000-file sweep is sub-second |
+| `studio_list_outfit` | A character's eight clothes slots (item worn, state, states accepted, coupling) and twenty accessory slots | **required** before `studio_set_character_outfit`: the states a slot takes depend on the garment |
 | `studio_list_attach_points` | A character's 54 bone anchors: index, name, `available`, ids already attached | **required** before `studio_attach_object`: only `available` points can be used |
 | `studio_list_bones` | A character's posable skeleton: every FK bone (name, group, `weighted`, rot) and the 13 IK targets (name, group, `rotatable`, pos/rot) | **required** before posing: the bone set depends on the rig, hair and clothes |
 | `studio_list_overlays` | The 2D background and frame images on disk | paths feed `studio_set_overlay` |
@@ -39,6 +41,8 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_set_character_anime` | Base animation `(group, category, no[, normalized_time])` and/or playback: `speed`, `pattern`, `option_param1|2` | ids from `studio_search_catalog` with `catalog='anime'`; the playback fields are undoable |
 | `studio_set_character_expression` | Face: eyebrows/eyes/mouth patterns, openings, blink, tears, blush, look-at, expression categories | partial + absolute |
 | `studio_set_character_hands` | Hand shapes, `left` and `right` independently | partial + absolute; `0` disables the shape, `1..hands.count` selects one |
+| `studio_set_character_outfit` | Load an outfit, dress/undress the eight slots, show or hide accessories | partial + absolute; `coordinate` is applied first and the rest is validated against it |
+| `studio_set_character_state` | The rest of Studio's state panel: skin gloss, wetness, flat silhouette + colour, son + length, nipple and liquids (both female-only) | partial + absolute; read back from `state` in `studio_list_characters` |
 | `studio_set_character_kinematics` | Switch posing mode (`fk`/`ik`/`none`), toggle bone groups, and `reflect` the live pose into the change amounts | gates the two tools below; not undoable but leaves the stack intact |
 | `studio_set_character_bone` | Rotate FK bones, several at a time | absolute euler degrees; one call = one undo step |
 | `studio_set_character_ik` | Move (and rotate, on hands and feet) IK targets, several at a time | absolute offsets; one call = one undo step |
@@ -54,6 +58,34 @@ Every write tool takes **absolute** values and applies only the fields present, 
 **Pose vs anime.** They are two different Studio concepts. An *anime* is a clip from the catalog (`OCIChar.LoadAnime`) and only sets the animation. A *pose file* (`PauseCtrl`, `UserData/studio/pose/*.dat`) additionally restores every IK and FK bone target and the expression category flags, and only applies to a character of the sex it was saved for. The anime catalog itself is **not** sex-filtered — Studio does not filter it either.
 
 **Hands are set separately from everything else.** Neither a pose file nor a clip touches the hand shapes, so `studio_set_character_hands` is the only way to change them and its effect survives a later pose or anime. The shapes have no names anywhere in Studio — its own panel shows a bare number — so the tool takes an index and the way to identify a shape is `studio_screenshot`. `0` means "no shape", i.e. the animation drives the fingers; `1..hands.count` select one, `hands.count` coming from `studio_list_characters` (it depends on installed mods, and is `-1` while the shape list is still loading).
+
+**Dressing is per slot, and Studio never says no.** `studio_set_character_outfit` covers the three things
+Studio's costume and state tabs do: load a coordinate, set how each of the eight slots is worn (`worn`, `half`,
+`off`) and toggle the twenty accessory slots. Its ordering inside one call is fixed — `coordinate`, then
+`clothes_all`, then `clothes`, then `accessories` — because a coordinate replaces both the clothes and the
+accessories and therefore what the rest of the patch means. Which states a slot accepts depends on the garment
+worn there: `ChaControl.SetClothesState` walks `(state + 1) % 3` until it finds one the slot does accept and
+applies *that* without a word, so an unsupported state is refused here instead — `states` in
+`studio_list_outfit` is the authority, and an empty list means the slot has no dressing states at all. The same
+goes for an accessory slot with nothing in it: the flag would be stored and nothing would appear.
+`clothes_all` is the exception and is deliberately not validated, since it is Studio's own three dressing
+buttons and falls back per slot exactly as they do.
+
+**One garment can own two slots.** A full-body top leaves `bot` empty and a one-piece leaves `inner_b` empty; in
+that state Studio mirrors `off` between the two, so writing one slot moves the other. `linked_to` in
+`studio_list_outfit` names the sibling, and both the read tools return every slot rather than the ones that were
+asked for. Two more consequences of changing an outfit: the FK skirt bones are re-weighted against the new
+garment (re-read `studio_list_bones` — with a skirt on, 6 of the 48 are weighted here; with shorts, none are),
+and the dressing states are *not* reset, so a slot left `off` by the previous outfit stays `off` under the new
+one unless the same call passes `clothes_all`.
+
+**The state panel is split in two.** Studio's per-character state tab holds the face sliders — tears and blush,
+which belong to `studio_set_character_expression` — next to the body ones, which are
+`studio_set_character_state`: skin gloss, wetness, the flat single-colour silhouette and its colour, the male
+part and its length, plus `nipple` and `siru` which are refused on a male because their appliers do nothing
+there. `siru` levels are capped at 2 for a reason that is not cosmetic: the level indexes a three-entry table
+inside Studio's own update loop on the next frame, where an out-of-range value takes the process down instead of
+returning an error.
 
 **Attaching changes what a transform means.** While an object is attached, its `transform` — both what `studio_list_objects` reports and what `studio_set_object_transform` writes — is in the parent's local space, not world space. `pos: [0,0,0]` puts the object exactly on the bone. Detaching converts back to world space. Because the conversion happens on the object's stored coordinates, every transform still on Studio's undo stack would be replayed in the wrong space, so `studio_attach_object` clears the stack.
 
@@ -105,4 +137,4 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-Outfits, then Timeline. Left aside for now: clothes (sibling slots are coupled, top↔bottom and inner_t↔inner_b) and `siru` (read-back is a frame late, and a state above 2 throws inside `Manager.Character.Update` later). Third-party plugins (Timeline, NodesConstraints) may only ever be optional: their tools would register when the plugin is detected and the rest of the API must work without them.
+Timeline. Left aside inside the outfit surface: changing the *item* in a slot (`ChangeClothes(kind, id)`, `ChangeAccessory`) and its colours — that is the character maker's job and needs the whole per-sex clothes catalog, which Studio's own Studio-side panels do not expose either. Third-party plugins (Timeline, NodesConstraints) may only ever be optional: their tools would register when the plugin is detected and the rest of the API must work without them.

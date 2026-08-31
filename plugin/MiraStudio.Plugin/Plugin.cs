@@ -74,6 +74,12 @@ namespace MiraStudio
                 Params.OptString(p, "sex"),
                 Params.OptString(p, "query"),
                 Params.OptInt(p, "limit", 100)).ConvertAll(e => e.ToJson())), 180000);
+            // Same first-call sweep as the cards, over ~2000 outfit files.
+            _server.Register("studio_list_coordinates", p => ToArray(_service.ListCoordinates(
+                Params.OptString(p, "sex"),
+                Params.OptString(p, "query"),
+                Params.OptInt(p, "limit", 100)).ConvertAll(e => e.ToJson())), 180000);
+            _server.Register("studio_list_outfit", p => _service.ListOutfit(Params.ReqInt(p, "id")).ToJson());
             _server.Register("studio_list_attach_points", p => ToArray(
                 _service.ListAttachPoints(Params.ReqInt(p, "id")).ConvertAll(e => e.ToJson())));
             _server.Register("studio_list_bones", p => _service.ListBones(Params.ReqInt(p, "id")).ToJson());
@@ -122,6 +128,13 @@ namespace MiraStudio
             _server.Register("studio_set_character_hands", p => _service.SetCharacterHands(
                 Params.ReqInt(p, "id"),
                 Params.Hands(p)).ToJson());
+            // Loading a coordinate reloads the character's clothes and accessories.
+            _server.Register("studio_set_character_outfit", p => _service.SetCharacterOutfit(
+                Params.ReqInt(p, "id"),
+                Params.Outfit(p)).ToJson(), 120000);
+            _server.Register("studio_set_character_state", p => _service.SetCharacterState(
+                Params.ReqInt(p, "id"),
+                Params.CharacterState(p)).ToJson());
             _server.Register("studio_attach_object", p =>
             {
                 int? point;

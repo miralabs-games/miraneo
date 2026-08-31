@@ -104,6 +104,12 @@ DTOs serialize themselves to the wire format via `ToJson()` (`Core/Json.cs` is a
 | 2D overlays | `BackgroundCtrl.Load(path)` and `Studio.frameCtrl.Load(name)`; lists as `BackgroundList`/`FrameList` build them, from `DefaultData.Create("bg")` + `UserData.Create("bg")` and `UserData.Create("frame")` |
 | Post-processing | Write the `sceneInfo` fields, then `Studio.systemButtonCtrl.UpdateInfo()`. `SystemButtonCtrl.Apply()` pushes all twelve `EffectInfo`s from `sceneInfo` into their components; `UpdateInfo()` does that *and* refreshes the panel's widgets, which is what Studio itself calls after a scene load. Catalogs `Info.dicColorGradingLoadInfo`, `dicReflectionProbeLoadInfo`, `dicSkyPatternInfo` |
 | Post-processing object targets | `Studio.SetDepthOfFieldForcus(key)` and `Studio.SetSunCaster(key)` (both forward to `SystemButtonCtrl`) |
+| Load an outfit | `OCIChar.LoadClothesFile(path)` — always the virtual: `OCICharFemale` also refreshes bust softness, re-fetches the skirt dynamic bones and cycles the FK skirt group through `FKCtrl.ResetUsedBone`. It forwards to `ChaControl.ChangeNowCoordinate(path, reload: true)` + `AssignCoordinate()` |
+| List outfits | `Directory.GetFiles(UserData.Path + "coordinate/{female,male}", "*.png")`, name from the file header (`PngFile.SkipPng` in IL.dll, then product no, `【AIS_Clothes】`, version, language, name) — the same prefix `ChaFileCoordinate.LoadFile` reads before its MessagePack payload |
+| Dressing state | `OCIChar.SetClothesState(kind, state)` / `SetClothesStateAll(state)`; what a slot accepts is `ChaControl.GetClothesStateKind(kind)` (`IsClothesStateType` for one value), read back from `charFileStatus.clothesState[kind]` |
+| What is worn | `ChaControl.infoClothes[kind].Name` and `infoAccessory[slot].Name` (`ListInfoBase.Name` picks the game's language), presence from `objClothes[kind]` / `objAccessory[slot]`, coupling from `ChaControl.notBot` / `notInnerB` |
+| Accessory visibility | `OCIChar.ShowAccessory(slot, flag)`, read back from `charFileStatus.showAccessory[slot]`; parent bone in `nowCoordinate.accessory.parts[slot].parentKey` |
+| Character state panel | `OCIChar.SetNipStand` / `SetTuyaRate` / `SetWetRate` / `SetVisibleSimple` / `SetSimpleColor` / `SetVisibleSon` / `SetSonLength` / `SetSiruFlags`, read back from `oiCharInfo` (`nipple`, `SkinTuyaRate`, `WetRate`, `visibleSimple`, `simpleColor`, `visibleSon`, `sonLength`, `siru`) |
 | Character state read-back | `OCIChar.oiCharInfo` (`animeInfo`, `handPtn`, `enableIK/FK`, `activeIK/FK`, `expression`, `mouthOpen`, `lipSync`), `OCIChar.charFileStatus` (`eyesOpenMax`, `eyesBlink`, `eyesLookPtn`, `neckLookPtn`), `OCIChar.animeSpeed/animePattern/animeOptionParam1|2/isAnimeMotion/isHAnime`, `charInfo.GetEyesPtn/GetEyebrowPtn/GetMouthPtn`, `charAnimeCtrl.normalizedTime`. **Not** `oiCharInfo.kinematicMode` — see below |
 
 Rules that follow from the above:
@@ -146,6 +152,49 @@ Rules that follow from the above:
 - **Two post-processing fields are object ids, and they fail silently.** `SetDepthOfFieldForcus` and `SetSunCaster` accept any key and quietly store `-1` for anything whose `kind != 1`, so both are validated against `OCIItem` up front. They are not symmetric on restore either: `DOFInfo.Apply` re-resolves `sceneInfo.depthForcus` on every apply, while `SunShaftsInfo.Apply` never touches `sunShafts.sunTransform` — only `SetSunCaster` writes it, so a sun caster has to be re-sent explicitly.
 - **`selfShadow` is not a scene setting.** `SelfShadowInfo.Set` does `QualitySettings.SetQualityLevel(level / 2 * 2 + (enable ? 0 : 1))`: it moves the global quality level by one step and outlives the scene that set it.
 - The numeric bounds of the screen-effect panel live in its prefab (`InputCombination.Min/Max` read `slider.minValue/maxValue`), not in code, so they are documented and not enforced — unlike the chara light's, which `CameraLightCtrl` clamps in code to `0.1..2` for intensity and `0..359` per rotation axis.
+- **`ChaControl.SetClothesState` cannot fail, so it lies instead.** When the requested state is not in
+  `dictStateType[kind]` it loops `state = (state + 1) % 3` until it finds one that is (or wraps back to the
+  current one) and applies *that*. `SetClothesState` is also the only writer, so nothing downstream ever sees the
+  difference — the write path checks `IsClothesStateType` itself and refuses. `AddClothesStateKindSub` only
+  registers a slot whose garment declares `StateType` 0 (worn/half/off) or 1 (worn/off); with no garment the
+  type defaults to 3 and the slot gets **no entry at all**, at which point `SetClothesState` stores the raw byte
+  with no validation and no effect.
+- **The sibling coupling lives in the engine, not in the API.** `SetClothesState`'s tail mirrors `off` between
+  `top` and `bot` while `notBot`, and between `inner_t` and `inner_b` while `notInnerB` (one garment covers both
+  slots), so a single-slot write can move two slots — hence read-backs return all eight. Live: a full-body ninja
+  outfit reports `bot` with no item but a full state list, and setting `bot` back to `worn` pulled `top` with it.
+- **`OCIChar.ShowAccessory` has no bounds check** — unlike `ChaControl.SetAccessoryState`, which does — so a slot
+  ≥ 20 throws out of the middle of the write, and on an empty slot the flag is stored and inert:
+  `ChaControl.UpdateVisible` only walks slots whose `objAccessory` is non-null. Both are refused up front.
+  `equipped` is not the same as "wearing something": the catalog's explicit *None* entry is a real object, so a
+  slot can be equipped, named "None", and have no dressing states.
+- **Clothes and accessory writes are data-only; the screen catches up in `LateUpdate`.** `Manager.Character`
+  calls `ChaControl.LateUpdateForce` → `UpdateVisible` every frame, so `clothesState` and `showAccessory` are
+  correct to read back immediately but a screenshot taken in the same batch can still show the previous state.
+- **`LoadClothesFile` is synchronous and swallows both of its return values.** `Reload` starts
+  `ReloadAsync(asyncFlags: false)`, whose synchronous branches never yield, so the whole reload runs inline — but
+  `OCIChar.LoadClothesFile` returns `void` and drops the `bool` from `ChangeNowCoordinate`, which is `false` on a
+  missing or unreadable file. The write path therefore validates the file with `ChaFileCoordinate.LoadFile`
+  first, the same call `ChangeNowCoordinate` is about to make.
+- **A coordinate carries no sex and its name does not survive being worn.** Unlike a pose file there is no
+  identifying code — `ChaFileControl.ConvertCoordinateFilePath` just prefixes `coordinate/{male,female}/` for a
+  bare name (and resolves anything with a directory component against the process CWD, so the adapter always
+  passes an absolute path). And `ChangeNowCoordinate` goes through `LoadBytes`, which restores only `clothes` and
+  `accessory`: `nowCoordinate.coordinateName` keeps whatever it held, so what a character is wearing can only be
+  read back item by item, never as an outfit name.
+- **Changing an outfit re-weights the skirt bones.** `FKCtrl.ResetUsedBone` recomputes `boneWeight` for the 48
+  skirt bones against the new clothes without touching any `dicKey`, so the undo stack stays valid but
+  `studio_list_bones` goes stale — live, 6 weighted with a skirt on, 0 with shorts.
+- **`siru` is a deferred write with a crash at the end of it.** `SetSiruFlag` only stores into `siruNewLv`;
+  `UpdateSiru`, one frame later inside `Manager.Character`'s update, copies it into `fileStatus.siruLv` and uses
+  it to index a `float[3]` — so a level above 2 takes the process down there rather than erroring in the call
+  that set it. It is also female-only (`UpdateSiru` returns immediately at `sex == 0`, and `OCIChar.GetSiruFlags`
+  is a constant 0 on the base class), as is `SetNipStand`, whose base implementation is empty. Read-back uses
+  `oiCharInfo.siru`, which is written synchronously and is what `AddObjectAssist.UpdateState` pushes back into
+  the character on a scene load.
+- `wetRate` and `skinGlossRate` clamp themselves to 0..1 in their setters, so the read-back shows the clamped
+  value; `ChangeNipRate` and `SetSonLength` clamp nothing, and their bounds are the prefab's — documented, not
+  enforced, like the screen-effect panel's.
 - Never hand out Unity object references — ids only (`dicObjectCtrl` keys).
 - The camera transform is recomputed in `LateUpdate` (`InternalUpdateCameraState`), so anything reading `Camera.main` back after a camera write must wait a frame.
 - Scene scale varies per scene; never assume 1 unit = 1 m when choosing distances or light ranges.
