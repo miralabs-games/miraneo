@@ -1,0 +1,28 @@
+{
+  "description": "Put a keyframe on an interpolable at a given time, or overwrite the one already there. The intended workflow is to omit 'value': the keyframe then captures the property exactly as the scene stands, which is what Timeline's own button does — pose the character with studio_set_character_bone / studio_set_character_ik / studio_set_object_transform, seek to the time you want, and record. Pass 'value' only to set it directly, in the same shape studio_timeline_get_state reads it back: a number, a boolean, [x,y,z] for a position or scale, euler degrees for a rotation, [r,g,b,a] for a colour. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "interpolable_id": { "type": "integer", "description": "id from studio_timeline_get_state or studio_timeline_add_interpolable" },
+      "time": { "type": "number", "minimum": 0, "description": "seconds, between 0 and the timeline duration; an existing keyframe at the same time is overwritten" },
+      "value": { "description": "omit to capture the current scene value — the reliable option, and the only one for types with no JSON form" },
+      "curve": {
+        "oneOf": [
+          { "type": "string", "enum": ["line", "top", "bottom", "hermite", "stairs"] },
+          {
+            "type": "array",
+            "minItems": 2,
+            "items": { "type": "array", "items": { "type": ["number", "null"] }, "minItems": 4, "maxItems": 4 }
+          }
+        ],
+        "description": "easing from this keyframe to the next: one of Timeline's own presets ('line' linear, 'top' fast then slow, 'bottom' slow then fast, 'hermite' eased both ends, 'stairs' a hard step), or explicit [time, value, in_tangent, out_tangent] points where a null tangent means an infinite one. Omitted, it inherits the curve of the preceding keyframe and falls back to linear."
+      }
+    },
+    "required": ["interpolable_id", "time"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the interpolable with all its keyframes, same shape as one entry of studio_timeline_get_state's 'interpolables'"
+  }
+}

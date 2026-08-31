@@ -1,0 +1,18 @@
+{
+  "description": "Manage Timeline's single files: one object's interpolables and keyframes saved on their own, so an animation can be reused on another character or in another scene. Saving writes the interpolables bound to 'object_id' — for a character it also stores the animation the character is playing, and loading restores it. Loading merges into the timeline rather than replacing it: interpolables that already exist take the file's keyframes. Files live in Timeline's own folder next to its DLL, not in UserData. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "action": { "type": "string", "enum": ["list", "load", "save", "delete"] },
+      "name": { "type": "string", "description": "file name without the .xml extension; required by load, save and delete" },
+      "object_id": { "type": "integer", "description": "scene object the interpolables belong to (id from studio_list_objects); required by load and save" },
+      "overwrite": { "type": "boolean", "default": false, "description": "save only: replace an existing file of that name" }
+    },
+    "required": ["action"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "'list' returns {files: [{name, size, modified}]}; 'save' returns that one entry; 'load' returns the timeline state filtered to the object; 'delete' returns {deleted}"
+  }
+}

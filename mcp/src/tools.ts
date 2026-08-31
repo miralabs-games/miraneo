@@ -37,6 +37,15 @@ import setMap from "../../shared/schemas/studio_set_map.json";
 import setSceneLighting from "../../shared/schemas/studio_set_scene_lighting.json";
 import setOverlay from "../../shared/schemas/studio_set_overlay.json";
 import setPostProcessing from "../../shared/schemas/studio_set_post_processing.json";
+import timelineGetState from "../../shared/schemas/studio_timeline_get_state.json";
+import timelinePlayback from "../../shared/schemas/studio_timeline_playback.json";
+import timelineSetSettings from "../../shared/schemas/studio_timeline_set_settings.json";
+import timelineListModels from "../../shared/schemas/studio_timeline_list_models.json";
+import timelineAddInterpolable from "../../shared/schemas/studio_timeline_add_interpolable.json";
+import timelineRemoveInterpolable from "../../shared/schemas/studio_timeline_remove_interpolable.json";
+import timelineSetKeyframe from "../../shared/schemas/studio_timeline_set_keyframe.json";
+import timelineDeleteKeyframe from "../../shared/schemas/studio_timeline_delete_keyframe.json";
+import timelineSingleFile from "../../shared/schemas/studio_timeline_single_file.json";
 import executeBatch from "../../shared/schemas/studio_execute_batch.json";
 
 interface ToolDef {
@@ -101,6 +110,15 @@ export const TOOLS: ToolDef[] = [
   def("studio_set_scene_lighting", setSceneLighting, 15000),
   def("studio_set_overlay", setOverlay, 90000),
   def("studio_set_post_processing", setPostProcessing, 90000),
+  def("studio_timeline_get_state", timelineGetState, 15000),
+  def("studio_timeline_playback", timelinePlayback, 15000),
+  def("studio_timeline_set_settings", timelineSetSettings, 15000),
+  def("studio_timeline_list_models", timelineListModels, 15000),
+  def("studio_timeline_add_interpolable", timelineAddInterpolable, 15000),
+  def("studio_timeline_remove_interpolable", timelineRemoveInterpolable, 15000),
+  def("studio_timeline_set_keyframe", timelineSetKeyframe, 15000),
+  def("studio_timeline_delete_keyframe", timelineDeleteKeyframe, 15000),
+  def("studio_timeline_single_file", timelineSingleFile, 90000),
   def("studio_execute_batch", executeBatch, 300000),
 ];
 

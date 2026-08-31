@@ -46,6 +46,10 @@ namespace MiraStudio.Adapters
                 BepInExVersion = typeof(BepInEx.BaseUnityPlugin).Assembly.GetName().Version.ToString(),
                 ActiveScene = SceneManager.GetActiveScene().name,
                 StudioLoaded = IsStudioReady(),
+                Plugins = new List<KeyValuePair<string, string>>
+                {
+                    new KeyValuePair<string, string>("timeline", TimelineAdapter.Version),
+                },
             };
             if (dto.StudioLoaded)
             {
@@ -1421,7 +1425,7 @@ namespace MiraStudio.Adapters
             catch { return "bone_" + bone.boneID; }
         }
 
-        private static Dictionary<string, SNeo.OCIChar.BoneInfo> BoneIndex(SNeo.OCIChar chr)
+        internal static Dictionary<string, SNeo.OCIChar.BoneInfo> BoneIndex(SNeo.OCIChar chr)
         {
             var info = Singleton<SNeo.Info>.Instance;
             var map = new Dictionary<string, SNeo.OCIChar.BoneInfo>();
@@ -1459,7 +1463,7 @@ namespace MiraStudio.Adapters
             return index >= 0 && index < names.Length ? Snake(names[index]) : "target_" + index;
         }
 
-        private static int IkTargetIndex(string name)
+        internal static int IkTargetIndex(string name)
         {
             var names = Enum.GetNames(typeof(SNeo.OICharInfo.IKTargetEN));
             for (var i = 0; i < names.Length; i++)
@@ -2038,7 +2042,7 @@ namespace MiraStudio.Adapters
             if (patch.Shadow.HasValue) oci.SetShadow(patch.Shadow.Value, true);
         }
 
-        private static SNeo.ObjectCtrlInfo RequireObject(int id)
+        internal static SNeo.ObjectCtrlInfo RequireObject(int id)
         {
             Require();
             var oci = SNeo.Studio.GetCtrlInfo(id);

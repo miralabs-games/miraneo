@@ -47,6 +47,32 @@ namespace MiraStudio.Core
             return (int)n.Value;
         }
 
+        public static float ReqFloat(JsonObject p, string key)
+        {
+            var n = p.Get(key) as JsonNumber;
+            if (n == null) throw Invalid(key, "a number");
+            return (float)n.Value;
+        }
+
+        // One id or a list of them: removing several interpolables in one call keeps
+        // the timeline consistent between reads.
+        public static List<int> IntList(JsonObject p, string key)
+        {
+            var node = p.Get(key);
+            var single = node as JsonNumber;
+            if (single != null) return new List<int> { (int)single.Value };
+            var arr = node as JsonArray;
+            if (arr == null || arr.Count == 0) throw Invalid(key, "an integer or a non-empty array of integers");
+            var list = new List<int>(arr.Count);
+            foreach (var item in arr)
+            {
+                var n = item as JsonNumber;
+                if (n == null) throw Invalid(key, "an integer or a non-empty array of integers");
+                list.Add((int)n.Value);
+            }
+            return list;
+        }
+
         public static float? OptFloat(JsonObject p, string key)
         {
             var node = p.Get(key);

@@ -1,0 +1,16 @@
+{
+  "description": "Remove one keyframe from an interpolable. The time must match an existing keyframe exactly — read the times back from studio_timeline_get_state rather than recomputing them, since they are stored as floats. Removing the last keyframe leaves the interpolable in place with no keyframes; drop it with studio_timeline_remove_interpolable. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "interpolable_id": { "type": "integer", "description": "id from studio_timeline_get_state" },
+      "time": { "type": "number", "description": "the keyframe's exact time in seconds, as read from studio_timeline_get_state" }
+    },
+    "required": ["interpolable_id", "time"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the interpolable with its remaining keyframes, same shape as one entry of studio_timeline_get_state's 'interpolables'"
+  }
+}

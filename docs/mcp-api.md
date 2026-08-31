@@ -8,7 +8,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 
 | Tool | Description | Notes |
 |---|---|---|
-| `studio_get_info` | Runtime info (versions, `studio_loaded`, object count) | works before the Studio scene is ready |
+| `studio_get_info` | Runtime info (versions, `studio_loaded`, object count, `plugins`) | works before the Studio scene is ready; `plugins.timeline` says whether the timeline tools will work |
 | `studio_get_scene` | Scene summary: object counts per kind, background/frame, plus the map, the scene light and the full post-processing state | errors with `-32000` until Studio is ready; the read-back for all four environment write tools |
 | `studio_list_characters` | All characters: id, name, card full name, sex, visible, transform, anime, kinematic, face, hands, expression | the read-back tool for every character write |
 | `studio_list_objects` | All scene objects: id, kind, name, visible, parent_id, transform, light state | `parent_id` set for attached objects |
@@ -115,6 +115,34 @@ Bone names are the rig's own transform names (`cf_J_ArmUp00_L`, `cf_J_Hand_Thumb
 
 Two tools already batch internally and should be preferred over a batch of single writes: `studio_set_character_bone` and `studio_set_character_ik` take several entries and push one `GuideCommand` for the lot, so they apply as a single undo step. A batch of individual calls does not.
 
+### Timeline (optional third-party plugin)
+
+| Tool | Description | Notes |
+|---|---|---|
+| `studio_timeline_get_state` | Transport plus every interpolable and its keyframes | the read-back for all the tools below; `available` says whether Timeline is there |
+| `studio_timeline_playback` | `play`, `pause`, `stop`, `seek`, `next_frame`, `previous_frame` | seeking applies the pose immediately, so `seek` + `studio_screenshot` renders a given moment |
+| `studio_timeline_set_settings` | Timeline length and the frame rate the steps use | partial + absolute |
+| `studio_timeline_list_models` | The animatable properties, filtered to what a given object accepts | **required** before adding: 95 models on a character here, only 38 of them Timeline's own |
+| `studio_timeline_add_interpolable` | Bind one property to one object, creating the track | idempotent — re-adding returns the existing track |
+| `studio_timeline_remove_interpolable` | Drop one or more tracks, keyframes included | every id is validated before anything is removed |
+| `studio_timeline_set_keyframe` | Put or overwrite a keyframe, with an easing curve | omit `value` to capture the scene as it stands |
+| `studio_timeline_delete_keyframe` | Remove one keyframe by its exact time | times are floats: read them back rather than recomputing |
+| `studio_timeline_single_file` | `list`, `load`, `save`, `delete` one object's animation as a reusable file | how an animation moves from one character to another |
+
+**Timeline is optional, but its tools are always registered.** The MCP tool list is static, so a missing plugin has to answer with a readable error rather than `unknown method`: every timeline tool fails with `-32001` and the reason, while `studio_timeline_get_state` answers normally with `available: false`. `studio_get_info` reports `plugins.timeline` as the version or `null`. The bridge resolves Timeline's members by reflection in one all-or-nothing pass, the way Timeline's own `TimelineCompatibility.Init` does, so a version that moved something reports itself unavailable instead of half-working. Tested against Timeline 1.4.1.
+
+**The workflow is pose-then-record.** Add the interpolable, seek to a time, pose the scene with the ordinary tools (`studio_set_character_bone`, `studio_set_character_ik`, `studio_set_object_transform`, …), then call `studio_timeline_set_keyframe` **without** `value`: the keyframe captures the property exactly as it stands, which is what Timeline's own button does and the only option for value types with no JSON form. Passing `value` explicitly works for the ordinary ones — numbers, booleans, `[x,y,z]`, euler degrees, `[r,g,b,a]` — and is typed against the property's current value, so a wrong shape is refused rather than coerced. `studio_execute_batch` is the right vehicle for this: pose/record pairs alternate correctly inside one batch, because every write lands on the change amounts synchronously and the capture that follows sees it.
+
+**Animating a bone still needs FK or IK on.** `guideObjectPos|Rot|Scale` are the per-target models, and they write the same change amounts `studio_set_character_bone` and `studio_set_character_ik` do. `target` takes `root` for the object itself or any bone or IK target name from `studio_list_bones` — the bridge resolves the guide object from Studio's own `BoneInfo`/`IKInfo`, so nothing touches the Studio selection. But `FKCtrl` still only applies a bone while its chain is enabled and the bone is weighted: with kinematics off, the animation is stored, read back correctly, and never reaches the mesh.
+
+**Curves are Timeline's own five presets.** `line`, `top` (fast then slow), `bottom` (slow then fast), `hermite` (eased both ends) and `stairs` (a hard step), with the exact tangents Timeline's keyframe window applies, or explicit `[time, value, in_tangent, out_tangent]` points. An omitted curve inherits the preceding keyframe's, falling back to linear — the same inheritance Timeline's `AddKeyframe` applies. `stairs` carries an infinite tangent, which JSON cannot spell, so it round-trips through `null`.
+
+**Two ids share a name, and one of them needs disambiguating.** `charClothes` and `juice` register one model per slot under a single id, told apart only by their label (`Bra State`, `Chest Juice State`); `add_interpolable` takes `name` for that and the error lists the choices. `owner` separates models that different plugins publish under the same id — HS2PE, Flow Control and PregnancyPlus all publish their own here.
+
+**Single files live outside UserData.** They are written next to Timeline's own DLL, not under `UserData`, and carry one object's tracks plus, for a character, the clip it is playing. Loading merges into the current timeline rather than replacing it, and rebinds the tracks onto the object given — which is exactly how an animation built on one character is replayed on another.
+
+**Timeline keeps its own history.** None of these tools touches Studio's `UndoRedoManager`, so a timeline edit is not undoable from the Studio UI and does not disturb the undo stack of the scene edits around it.
+
 ## Wire protocol (plugin side)
 
 - `POST /rpc` — JSON-RPC 2.0, method names identical to the MCP tool names, `params` as object.
@@ -137,4 +165,6 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-Timeline. Left aside inside the outfit surface: changing the *item* in a slot (`ChangeClothes(kind, id)`, `ChangeAccessory`) and its colours — that is the character maker's job and needs the whole per-sex clothes catalog, which Studio's own Studio-side panels do not expose either. Third-party plugins (Timeline, NodesConstraints) may only ever be optional: their tools would register when the plugin is detected and the rest of the API must work without them.
+NodesConstraints (joan6694, 1.3.3.0) — parent/child constraints with offsets, `lookAt`, mirroring, per-axis locks and damping. Deliberately left for later: it overlaps `studio_attach_object`, which already covers the common case, and unlike Timeline it exposes nothing public at all (`_self`, `_constraints` and both `AddConstraint` overloads are private), so every call would be reflection.
+
+Left aside inside the outfit surface: changing the *item* in a slot (`ChangeClothes(kind, id)`, `ChangeAccessory`) and its colours — that is the character maker's job and needs the whole per-sex clothes catalog, which Studio's own Studio-side panels do not expose either. Not covered at all: voices, routes, and the `bgmCtrl`/`envCtrl`/`outsideSoundCtrl` settings already present in `SceneInfo`.

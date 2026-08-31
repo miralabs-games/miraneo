@@ -1,0 +1,53 @@
+{
+  "description": "Read the Timeline plugin's whole animation state: transport (playing, current time, duration, frame rate) and every interpolable — one animatable property bound to one scene object — with its keyframes. This is the read-back for every other studio_timeline_* tool. Timeline is an optional third-party plugin (joan6694): when it is not installed the call still succeeds and answers 'available': false with the reason, so check that (or 'plugins.timeline' in studio_get_info) before building an animation. Keyframe values are typed by their interpolable: numbers, booleans, [x,y,z] for positions, euler degrees for rotations, [r,g,b,a] for colours, {group,category,no} for animations. Values whose type has no JSON form come back as a string.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "object_id": { "type": "integer", "description": "only return the interpolables bound to this scene object (id from studio_list_objects); counts still cover the whole timeline" },
+      "include_keyframes": { "type": "boolean", "default": true, "description": "set false for the transport and the interpolable list without their keyframes" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "available": { "type": "boolean", "description": "false when the Timeline plugin is absent or has not initialised; every other timeline tool then fails" },
+      "version": { "type": ["string", "null"], "description": "Timeline's own version, e.g. '1.4.1'" },
+      "unavailable": { "type": ["string", "null"], "description": "why the bridge is unavailable, null when it works" },
+      "is_playing": { "type": "boolean" },
+      "playback_time": { "type": "number", "description": "seconds" },
+      "duration": { "type": "number", "description": "seconds" },
+      "frame_rate": { "type": "integer", "description": "the frame rate next_frame and previous_frame step by" },
+      "interpolable_count": { "type": "integer", "description": "over the whole timeline, before any object_id filter" },
+      "keyframe_count": { "type": "integer", "description": "over the whole timeline, before any object_id filter" },
+      "interpolables": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer", "description": "pass this to the keyframe tools" },
+            "owner": { "type": "string", "description": "the plugin that publishes this property; 'Timeline' for the built-in ones" },
+            "model": { "type": "string", "description": "property id, e.g. 'guideObjectPos' or 'lightColor'" },
+            "name": { "type": "string", "description": "the label Timeline shows, target included" },
+            "alias": { "type": "string" },
+            "enabled": { "type": "boolean" },
+            "object_id": { "type": ["integer", "null"], "description": "the scene object this is bound to; null for the global properties (camera, time scale)" },
+            "target": { "type": ["string", "null"], "description": "the bone or IK target it animates, for the per-target properties" },
+            "keyframe_count": { "type": "integer" },
+            "keyframes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "time": { "type": "number", "description": "seconds" },
+                  "value": { "description": "typed by the interpolable" },
+                  "curve": { "type": "array", "description": "easing as [time, value, in_tangent, out_tangent] points; a null tangent is an infinite one" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -22,16 +22,27 @@ namespace MiraStudio.Core
         public string ProductName, UnityVersion, GameVersion, PluginVersion, BepInExVersion, ActiveScene;
         public bool StudioLoaded;
         public int SceneObjectCount;
+        // Optional third-party plugins MiraStudio bridges to, name -> version or
+        // null when absent: the timeline tools are registered either way, so this
+        // is how an agent tells "not installed" from "call it".
+        public System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<string, string>> Plugins;
 
-        public JsonNode ToJson() => new JsonObject()
-            .Add("product_name", ProductName)
-            .Add("unity_version", UnityVersion)
-            .Add("game_version", GameVersion)
-            .Add("plugin_version", PluginVersion)
-            .Add("bepinex_version", BepInExVersion)
-            .Add("active_scene", ActiveScene)
-            .Add("studio_loaded", StudioLoaded)
-            .Add("scene_object_count", SceneObjectCount);
+        public JsonNode ToJson()
+        {
+            var plugins = new JsonObject();
+            if (Plugins != null)
+                foreach (var kv in Plugins) plugins.Add(kv.Key, kv.Value);
+            return new JsonObject()
+                .Add("product_name", ProductName)
+                .Add("unity_version", UnityVersion)
+                .Add("game_version", GameVersion)
+                .Add("plugin_version", PluginVersion)
+                .Add("bepinex_version", BepInExVersion)
+                .Add("active_scene", ActiveScene)
+                .Add("studio_loaded", StudioLoaded)
+                .Add("scene_object_count", SceneObjectCount)
+                .Add("plugins", plugins);
+        }
     }
 
     public sealed class SceneSummaryDto
@@ -931,5 +942,104 @@ namespace MiraStudio.Core
             !Eyebrows.HasValue && !Eyes.HasValue && !Mouth.HasValue && !LookEyes.HasValue && !LookNeck.HasValue &&
             !EyesOpen.HasValue && !MouthOpen.HasValue && !Tears.HasValue && !Blush.HasValue &&
             !Blink.HasValue && !LipSync.HasValue && (Categories == null || Categories.Count == 0);
+    }
+
+    // A keyframe value is whatever type its interpolable holds, so it crosses the
+    // adapter boundary already rendered as JSON rather than as a boxed Unity type.
+    public sealed class TimelineKeyframeDto
+    {
+        public float Time;
+        public JsonNode Value;
+        public JsonNode Curve;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("time", Time)
+            .Add("value", Value)
+            .Add("curve", Curve);
+    }
+
+    public sealed class TimelineInterpolableDto
+    {
+        public int Id;
+        public string Owner, Model, Name, Alias, Target;
+        public bool Enabled;
+        public int? ObjectId;
+        public int KeyframeCount;
+        public System.Collections.Generic.List<TimelineKeyframeDto> Keyframes;
+
+        public JsonNode ToJson()
+        {
+            var node = new JsonObject()
+                .Add("id", Id)
+                .Add("owner", Owner)
+                .Add("model", Model)
+                .Add("name", Name)
+                .Add("alias", Alias)
+                .Add("enabled", Enabled)
+                .Add("object_id", ObjectId.HasValue ? (JsonNode)ObjectId.Value : JsonNull.Instance)
+                .Add("target", Target)
+                .Add("keyframe_count", KeyframeCount);
+            if (Keyframes != null)
+            {
+                var arr = new JsonArray();
+                foreach (var k in Keyframes) arr.Add(k.ToJson());
+                node.Add("keyframes", arr);
+            }
+            return node;
+        }
+    }
+
+    public sealed class TimelineStateDto
+    {
+        public bool Available;
+        public string Version, Unavailable;
+        public bool IsPlaying;
+        public float PlaybackTime, Duration;
+        public int FrameRate, InterpolableCount, KeyframeCount;
+        public System.Collections.Generic.List<TimelineInterpolableDto> Interpolables;
+
+        public JsonNode ToJson()
+        {
+            var node = new JsonObject()
+                .Add("available", Available)
+                .Add("version", Version)
+                .Add("unavailable", Available ? JsonNull.Instance : (JsonNode)Unavailable)
+                .Add("is_playing", IsPlaying)
+                .Add("playback_time", PlaybackTime)
+                .Add("duration", Duration)
+                .Add("frame_rate", FrameRate)
+                .Add("interpolable_count", InterpolableCount)
+                .Add("keyframe_count", KeyframeCount);
+            if (Interpolables != null)
+            {
+                var arr = new JsonArray();
+                foreach (var i in Interpolables) arr.Add(i.ToJson());
+                node.Add("interpolables", arr);
+            }
+            return node;
+        }
+    }
+
+    public sealed class TimelineModelDto
+    {
+        public string Owner, Model, Name;
+        public bool Dynamic, Compatible;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("owner", Owner)
+            .Add("model", Model)
+            .Add("name", Name)
+            .Add("dynamic", Dynamic);
+    }
+
+    public sealed class TimelineSingleFileDto
+    {
+        public string Name, Modified;
+        public long Size;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("name", Name)
+            .Add("size", Size)
+            .Add("modified", Modified);
     }
 }

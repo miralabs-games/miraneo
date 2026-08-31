@@ -1,0 +1,21 @@
+{
+  "description": "Delete one or more interpolables from the timeline, keyframes included. Ids come from studio_timeline_get_state. Nothing is applied to the scene: the objects keep the pose the timeline last left them in. This is not undoable through Studio's undo stack — Timeline keeps its own history, separate from Studio's. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "oneOf": [
+          { "type": "integer" },
+          { "type": "array", "items": { "type": "integer" }, "minItems": 1 }
+        ],
+        "description": "one interpolable id, or a list of them; every id is checked before anything is removed"
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "same shape as studio_timeline_get_state, interpolables listed without their keyframes"
+  }
+}

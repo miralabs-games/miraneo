@@ -1,0 +1,24 @@
+{
+  "description": "List the properties Timeline can animate — its interpolable models. Pass object_id to keep only the ones that apply to that scene object, which is the way to find out what is animatable on a character versus a light versus an item. Timeline ships around 38 built-in models (camera, time scale, visibility, guide-object position/rotation/scale, character animation, clothing states, face, hands, item colours and patterns, light settings); other plugins publish their own under their own 'owner'. A model marked 'dynamic' animates one target at a time and needs studio_timeline_add_interpolable to be given a 'target'. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "object_id": { "type": "integer", "description": "scene object id from studio_list_objects; filters to the models that accept it" },
+      "query": { "type": "string", "description": "case-insensitive substring matched against the model id and its label" },
+      "limit": { "type": "integer", "default": 100 }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "properties": {
+        "owner": { "type": "string", "description": "'Timeline' for the built-in models, otherwise the publishing plugin" },
+        "model": { "type": "string", "description": "pass this as 'model' to studio_timeline_add_interpolable" },
+        "name": { "type": "string", "description": "the label Timeline shows" },
+        "dynamic": { "type": "boolean", "description": "true when the model animates one target at a time and needs a 'target'" }
+      }
+    }
+  }
+}

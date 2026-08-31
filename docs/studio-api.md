@@ -199,6 +199,36 @@ Rules that follow from the above:
 - The camera transform is recomputed in `LateUpdate` (`InternalUpdateCameraState`), so anything reading `Camera.main` back after a camera write must wait a frame.
 - Scene scale varies per scene; never assume 1 unit = 1 m when choosing distances or light ranges.
 
+## Timeline bridge (optional plugin, reflection only)
+
+`Adapters/TimelineAdapter.cs` is the only file that touches Timeline (joan6694, `com.joan6694.illusionplugins.timeline`, tested at 1.4.1). There is no reference assembly, so every member is resolved by reflection in a single lazy all-or-nothing `Bind()`; one missing member sets `_error` and the whole bridge reports itself unavailable. `Plugin.cs` declares a `BepInDependency` soft dependency so BepInEx loads Timeline first when it is installed, and registers the tools either way.
+
+**What Timeline exposes publicly is exactly half of what is needed.**
+
+| Need | Timeline API used | Access |
+|---|---|---|
+| Transport | `Timeline.playbackTime` / `duration` / `isPlaying`, `Play/Pause/Stop/Seek/NextFrame/PreviousFrame` | public static |
+| Track list, keyframes | `Interpolable.keyframes` (`SortedList<float, Keyframe>`), `.enabled`, `.alias`, `.oci`, `.GetValue()` | public |
+| Create a track | `new Interpolable(oci, model)` / `(oci, parameter, model)`, `Tree<,>.AddLeaf/RemoveLeaf` | public |
+| Create a keyframe | `new Keyframe(value, parent, curve)`, `.value`, `.curve` | public |
+| Model catalog, compatibility | `InterpolableModel.owner/id/parameter`, `.name`, `.IsCompatibleWithTarget(oci)` | public |
+| Reaching any of it | `_self`, `_interpolables`, `_interpolablesTree`, `_interpolableModelsList`, `_selectedOCI`, `_duration`, `_desiredFrameRate`, `_singleFilesFolder` | private/internal fields |
+| Redraw, remove, single files | `UpdateGrid()`, `UpdateInterpolablesView()`, `RemoveInterpolable(i)`, `LoadSingle(path)`, `SaveSingle(path)` | private methods |
+
+`ToolBox.TimelineCompatibility` — embedded in Timeline and in every plugin that integrates with it — is **not** the entry point here: it exists to *publish* new animatable properties (`AddInterpolableModelStatic/Dynamic`), not to drive the timeline.
+
+**`_selectedOCI` is safe to borrow for one call.** `LoadSingle` and `SaveSingle` take no target and read that field instead. Timeline's `Update` only rewrites it when `_selectedGuideObjects.FirstOrDefault()` differs from the guide object it last saw, so setting it, calling, and restoring it within one main-thread call never collides with the plugin — and, unlike driving `TreeNodeCtrl.SelectSingle`, moves no gizmo and touches no undo stack.
+
+**Track creation never needs the selection at all.** `Timeline.AddInterpolable(model)` builds its `Interpolable` from `_selectedOCI`, but the two-arg and three-arg `Interpolable` constructors are public, so the bridge builds its own against the target `oci` and inserts it into `_interpolables` (keyed by `Interpolable.GetHashCode()`, which is also the id the API hands out) plus `_interpolablesTree`. For the dynamic `guideObjectPos|Rot|Scale` models, whose `getParameter` returns `GuideObjectManager.Instance.selectObject`, the three-arg constructor takes the guide object straight from `OCIChar.BoneInfo.guideObject`, `OCIChar.IKInfo.guideObject` or `ObjectCtrlInfo.guideObject`.
+
+**A model id is not unique.** `charClothes` and `juice` register one `InterpolableModel` per slot under the same id, differing only by `parameter` and `name`; other plugins (HS2PE, Flow Control, PregnancyPlus — 95 compatible models on a character on this install against Timeline's own 38) publish under their own `owner`. `AddInterpolable` therefore matches on `(id, owner?, name?)` and reports the candidates when the triple is still ambiguous.
+
+**Keyframe values are boxed and polymorphic.** `Keyframe.value` is an `object` whose type only its model knows; each model serialises it through its own XML delegates. Rather than reproduce those, the bridge converts by runtime type (`Vector2/3/4`, `Quaternion` as euler degrees, `Color`, the numeric types, `bool`, `string`, `OICharInfo.AnimeInfo`) and falls back to `ToString()`, which also degrades cleanly for third-party models. Writes are typed against the value currently returned by `GetValue()`, so a mismatched shape is refused instead of coerced — and omitting the value captures the live one, which is both the natural workflow and the only route for types with no JSON form.
+
+**Curve presets are copied from Timeline, tangents included** (`_linePreset`, `_topPreset`, `_bottomPreset`, `_hermitePreset`, `_stairsPreset`), so a curve set through the API is indistinguishable from one picked in Timeline's own keyframe window. `stairs` carries a `float.PositiveInfinity` tangent, which `JsonNumber` writes as `null`; the reader accepts `null` back as infinity.
+
+**Nothing here goes through `UndoRedoManager`.** Timeline keeps its own history, so timeline edits are not undoable from the Studio UI — and, symmetrically, they leave the scene's undo stack untouched.
+
 ## Reverse-engineering workflow
 
 `ilspycmd` (dotnet global tool) decompiles the exact call sequences before anything is wired up:

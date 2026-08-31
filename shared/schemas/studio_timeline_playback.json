@@ -1,0 +1,20 @@
+{
+  "description": "Drive Timeline's transport: play, pause, stop, seek to a time, or step one frame. Seeking applies the interpolation immediately, so pairing a seek with studio_screenshot is how you look at a given moment of the animation — take the screenshot in its own call, not in the same batch, since the frame it captures is the one before. 'stop' rewinds to 0 and applies that pose. Steps use the frame rate from studio_timeline_set_settings. Requires the Timeline plugin (check 'available' in studio_timeline_get_state).",
+  "input": {
+    "type": "object",
+    "properties": {
+      "action": {
+        "type": "string",
+        "enum": ["play", "pause", "stop", "seek", "next_frame", "previous_frame"],
+        "description": "'play' is idempotent here — it never toggles back to pause, unlike Timeline's own button"
+      },
+      "time": { "type": "number", "description": "seconds, required by 'seek'; must be between 0 and the timeline duration" }
+    },
+    "required": ["action"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "same shape as studio_timeline_get_state, interpolables listed without their keyframes"
+  }
+}

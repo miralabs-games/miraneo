@@ -1,0 +1,23 @@
+{
+  "description": "Bind an animatable property to a scene object, creating the timeline track that keyframes go on. This is the first step of building an animation: add the interpolable, then pose the scene and call studio_timeline_set_keyframe at each time you want. Find the models with studio_timeline_list_models. A 'dynamic' model animates one target at a time — 'guideObjectPos', 'guideObjectRot' and 'guideObjectScale' are the ones that move a character's bones or IK targets — and needs 'target'; the others take none. Adding an interpolable that already exists returns the existing one rather than duplicating it, so the call is idempotent. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "object_id": { "type": "integer", "description": "scene object id from studio_list_objects" },
+      "model": { "type": "string", "description": "model id from studio_timeline_list_models, e.g. 'guideObjectPos' or 'lightColor'" },
+      "owner": { "type": "string", "description": "disambiguates a model id published by more than one plugin; omit for the built-in 'Timeline' ones" },
+      "name": { "type": "string", "description": "disambiguates a model id that covers several properties — 'charClothes' and 'juice' register one per slot. Use the exact label from studio_timeline_list_models, e.g. 'Bra State'. The error message lists the choices when it is needed." },
+      "target": {
+        "type": "string",
+        "description": "what the property applies to, for a 'dynamic' model: 'root' for the object itself, or a bone or IK target name from studio_list_bones. Animating a bone writes the same change amount studio_set_character_bone does, so the character still needs the matching FK or IK mode on (studio_set_character_kinematics) for the motion to reach the mesh."
+      },
+      "alias": { "type": "string", "description": "a name of your own, shown in Timeline's list next to the default label" }
+    },
+    "required": ["object_id", "model"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the interpolable, same shape as one entry of studio_timeline_get_state's 'interpolables'"
+  }
+}

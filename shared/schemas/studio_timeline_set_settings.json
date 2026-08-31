@@ -1,0 +1,16 @@
+{
+  "description": "Set the timeline's length and frame rate. Absolute values, omitted field unchanged. Shortening the duration below an existing keyframe does not delete it, but playback stops before reaching it — read the keyframe times back with studio_timeline_get_state before shrinking. The frame rate only governs the next_frame and previous_frame steps of studio_timeline_playback; it is not a render setting. Requires the Timeline plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "duration": { "type": "number", "exclusiveMinimum": 0, "description": "timeline length in seconds (Timeline's own default is 10)" },
+      "frame_rate": { "type": "integer", "minimum": 1, "description": "frames per second used when stepping (Timeline's own default is 60)" }
+    },
+    "minProperties": 1,
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "same shape as studio_timeline_get_state, interpolables listed without their keyframes"
+  }
+}

@@ -8,7 +8,10 @@ using UnityEngine;
 
 namespace MiraStudio
 {
+    // Soft dependency so BepInEx loads Timeline first when it is installed; the
+    // bridge binds by reflection either way and every other tool works without it.
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
+    [BepInDependency(TimelineAdapter.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     public sealed class MiraStudioPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.mirastudio.plugin";
@@ -163,6 +166,45 @@ namespace MiraStudio
             _server.RegisterAsync("studio_load_scene", p => SceneService.LoadScene(this, Params.ReqString(p, "path")), 180000);
             _server.RegisterAsync("studio_save_scene", p => SceneService.SaveScene(this,
                 Params.OptString(p, "name"),
+                Params.OptBool(p, "overwrite") ?? false), 60000);
+
+            // Registered whether or not Timeline is installed: the MCP tool list is
+            // static, so a missing plugin must answer with a readable error rather
+            // than 'unknown method'. studio_get_info reports which it is.
+            _server.Register("studio_timeline_get_state", p => TimelineService.GetState(
+                Params.OptIntN(p, "object_id"),
+                Params.OptBool(p, "include_keyframes") ?? true).ToJson());
+            _server.Register("studio_timeline_playback", p => TimelineService.Playback(
+                Params.ReqString(p, "action"),
+                Params.OptFloat(p, "time")).ToJson());
+            _server.Register("studio_timeline_set_settings", p => TimelineService.SetSettings(
+                Params.OptFloat(p, "duration"),
+                Params.OptIntN(p, "frame_rate")).ToJson());
+            _server.Register("studio_timeline_list_models", p => ToArray(TimelineService.ListModels(
+                Params.OptIntN(p, "object_id"),
+                Params.OptString(p, "query"),
+                Params.OptInt(p, "limit", 100)).ConvertAll(e => e.ToJson())));
+            _server.Register("studio_timeline_add_interpolable", p => TimelineService.AddInterpolable(
+                Params.ReqInt(p, "object_id"),
+                Params.ReqString(p, "model"),
+                Params.OptString(p, "owner"),
+                Params.OptString(p, "name"),
+                Params.OptString(p, "target"),
+                Params.OptString(p, "alias")).ToJson());
+            _server.Register("studio_timeline_remove_interpolable", p => TimelineService.RemoveInterpolable(
+                Params.IntList(p, "id")).ToJson());
+            _server.Register("studio_timeline_set_keyframe", p => TimelineService.SetKeyframe(
+                Params.ReqInt(p, "interpolable_id"),
+                Params.ReqFloat(p, "time"),
+                p.Get("value"),
+                p.Get("curve")).ToJson());
+            _server.Register("studio_timeline_delete_keyframe", p => TimelineService.DeleteKeyframe(
+                Params.ReqInt(p, "interpolable_id"),
+                Params.ReqFloat(p, "time")).ToJson());
+            _server.Register("studio_timeline_single_file", p => TimelineService.SingleFile(
+                Params.ReqString(p, "action"),
+                Params.OptString(p, "name"),
+                Params.OptIntN(p, "object_id"),
                 Params.OptBool(p, "overwrite") ?? false), 60000);
 
             _server.RegisterBatch("studio_execute_batch", 32);
