@@ -49,6 +49,7 @@ namespace MiraStudio.Adapters
                 Plugins = new List<KeyValuePair<string, string>>
                 {
                     new KeyValuePair<string, string>("timeline", TimelineAdapter.Version),
+                    new KeyValuePair<string, string>("nodes_constraints", NodesConstraintsAdapter.Version),
                 },
             };
             if (dto.StudioLoaded)

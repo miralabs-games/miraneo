@@ -242,6 +242,70 @@ namespace MiraStudio.Core
             Frame = OptString(p, "frame"),
         };
 
+        public static ConstraintPatch Constraint(JsonObject p) => new ConstraintPatch
+        {
+            Parent = ConstraintNode(p, "parent"),
+            Child = ConstraintNode(p, "child"),
+            Enabled = OptBool(p, "enabled"),
+            Alias = OptString(p, "alias"),
+            Position = OptBool(p, "position"),
+            Rotation = OptBool(p, "rotation"),
+            Scale = OptBool(p, "scale"),
+            LookAt = OptBool(p, "look_at"),
+            MirrorPosition = OptBool(p, "mirror_position"),
+            MirrorRotation = OptBool(p, "mirror_rotation"),
+            MirrorScale = OptBool(p, "mirror_scale"),
+            PositionOffset = OptVec3(p, "position_offset"),
+            RotationOffset = OptVec3(p, "rotation_offset"),
+            ScaleOffset = OptVec3(p, "scale_offset"),
+            PositionFactor = OptFloat(p, "position_factor"),
+            RotationFactor = OptFloat(p, "rotation_factor"),
+            ScaleFactor = OptFloat(p, "scale_factor"),
+            PositionDamp = OptFloat(p, "position_damp"),
+            RotationDamp = OptFloat(p, "rotation_damp"),
+            ScaleDamp = OptFloat(p, "scale_damp"),
+            PositionLocks = OptAxes(p, "position_locks"),
+            RotationLocks = OptAxes(p, "rotation_locks"),
+            ScaleLocks = OptAxes(p, "scale_locks"),
+            ResetPosition = OptBool(p, "reset_position"),
+            ResetRotation = OptBool(p, "reset_rotation"),
+            ResetScale = OptBool(p, "reset_scale"),
+            FixDynamicBone = OptBool(p, "fix_dynamic_bone"),
+        };
+
+        // {"object_id": 3, "target": "cf_J_Hand_L"} — one end of a constraint.
+        private static ConstraintEndpoint ConstraintNode(JsonObject p, string key)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var obj = node as JsonObject;
+            if (obj == null) throw Invalid(key, "an object {object_id, target}");
+            var id = obj.Get("object_id") as JsonNumber;
+            if (id == null) throw Invalid(key + ".object_id", "an integer (a scene object id from studio_list_objects)");
+            return new ConstraintEndpoint
+            {
+                ObjectId = (int)id.Value,
+                Target = OptString(obj, "target"),
+            };
+        }
+
+        // [true, false, true] — which of x, y, z a constraint drives on its child.
+        private static bool[] OptAxes(JsonObject p, string key)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var arr = node as JsonArray;
+            if (arr == null || arr.Count != 3) throw Invalid(key, "an array of 3 booleans");
+            var axes = new bool[3];
+            for (var i = 0; i < 3; i++)
+            {
+                var b = arr[i] as JsonBool;
+                if (b == null) throw Invalid(key, "an array of 3 booleans");
+                axes[i] = b.Value;
+            }
+            return axes;
+        }
+
         public static PostProcessingDto PostProcessing(JsonObject p)
         {
             var dto = new PostProcessingDto();

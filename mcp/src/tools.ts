@@ -46,6 +46,10 @@ import timelineRemoveInterpolable from "../../shared/schemas/studio_timeline_rem
 import timelineSetKeyframe from "../../shared/schemas/studio_timeline_set_keyframe.json";
 import timelineDeleteKeyframe from "../../shared/schemas/studio_timeline_delete_keyframe.json";
 import timelineSingleFile from "../../shared/schemas/studio_timeline_single_file.json";
+import constraintList from "../../shared/schemas/studio_constraint_list.json";
+import constraintCreate from "../../shared/schemas/studio_constraint_create.json";
+import constraintSet from "../../shared/schemas/studio_constraint_set.json";
+import constraintDelete from "../../shared/schemas/studio_constraint_delete.json";
 import executeBatch from "../../shared/schemas/studio_execute_batch.json";
 
 interface ToolDef {
@@ -119,6 +123,10 @@ export const TOOLS: ToolDef[] = [
   def("studio_timeline_set_keyframe", timelineSetKeyframe, 15000),
   def("studio_timeline_delete_keyframe", timelineDeleteKeyframe, 15000),
   def("studio_timeline_single_file", timelineSingleFile, 90000),
+  def("studio_constraint_list", constraintList, 15000),
+  def("studio_constraint_create", constraintCreate, 15000),
+  def("studio_constraint_set", constraintSet, 15000),
+  def("studio_constraint_delete", constraintDelete, 15000),
   def("studio_execute_batch", executeBatch, 300000),
 ];
 

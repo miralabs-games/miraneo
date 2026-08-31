@@ -8,10 +8,12 @@ using UnityEngine;
 
 namespace MiraStudio
 {
-    // Soft dependency so BepInEx loads Timeline first when it is installed; the
-    // bridge binds by reflection either way and every other tool works without it.
+    // Soft dependencies so BepInEx loads the optional plugins first when they are
+    // installed; both bridges bind by reflection either way and every other tool
+    // works without them.
     [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
     [BepInDependency(TimelineAdapter.Guid, BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency(NodesConstraintsAdapter.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     public sealed class MiraStudioPlugin : BaseUnityPlugin
     {
         public const string PluginGuid = "com.mirastudio.plugin";
@@ -206,6 +208,17 @@ namespace MiraStudio
                 Params.OptString(p, "name"),
                 Params.OptIntN(p, "object_id"),
                 Params.OptBool(p, "overwrite") ?? false), 60000);
+
+            // Same deal as the timeline tools: always registered, and failing with
+            // a readable -32001 when NodesConstraints is not installed.
+            _server.Register("studio_constraint_list", p => ConstraintService.List(
+                Params.OptIntN(p, "object_id")).ToJson());
+            _server.Register("studio_constraint_create", p => ConstraintService.Create(Params.Constraint(p)).ToJson());
+            _server.Register("studio_constraint_set", p => ConstraintService.Set(
+                Params.ReqInt(p, "id"),
+                Params.Constraint(p)).ToJson());
+            _server.Register("studio_constraint_delete", p => ConstraintService.Delete(
+                Params.IntList(p, "id")).ToJson());
 
             _server.RegisterBatch("studio_execute_batch", 32);
 

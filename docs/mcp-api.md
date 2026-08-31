@@ -143,6 +143,68 @@ Two tools already batch internally and should be preferred over a batch of singl
 
 **Timeline keeps its own history.** None of these tools touches Studio's `UndoRedoManager`, so a timeline edit is not undoable from the Studio UI and does not disturb the undo stack of the scene edits around it.
 
+### Node constraints (optional third-party plugin)
+
+| Tool | Description | Notes |
+|---|---|---|
+| `studio_constraint_list` | Every constraint in the scene, fully expanded | the read-back for the three below; `available` says whether NodesConstraints is there |
+| `studio_constraint_create` | Make one node follow another | offsets left out are captured from where the nodes are now |
+| `studio_constraint_set` | Change one constraint | partial + absolute; the two nodes cannot be changed |
+| `studio_constraint_delete` | Drop one or more, restoring their children | every id is validated before anything is removed |
+
+**A constraint is not an attachment.** `studio_attach_object` reparents in Studio's own tree: one hard link, a fixed
+offset, and the object's transform switches to the parent's space. A constraint reparents nothing — the workspace
+tree stays flat — and can do what an attachment cannot: drive position, rotation and scale independently, drive
+only some axes, mirror the parent's motion, turn the child to face the parent (`look_at`), scale or exaggerate the
+parent's movement (`*_factor`), lag behind it (`*_damp`), and link **two nodes of two different characters**. The
+two tools do not conflict; an attached object can also be a constraint's parent or child.
+
+**A node is `{object_id, target}`.** `target` omitted or `"root"` is the object itself; otherwise it is a bone or
+IK target name from `studio_list_bones`, an anchor name from `studio_list_attach_points`, or any transform name or
+slash path under the object's root — constraints reach transforms no other tool exposes. Resolution tries those in
+that order and a bare name takes the first match in the subtree, so `path` in the read-back is the unambiguous
+form and is accepted as `target` too. The two nodes are the constraint's identity: `studio_constraint_set` refuses
+to re-target, delete and create instead.
+
+**Creating a constraint does not move anything.** Each offset that is omitted is captured from the nodes' current
+relation, the way NodesConstraints' own *Use current* buttons compute it, so a create freezes the pose and the
+child only starts moving when the parent does. That is the one deliberate deviation from the plugin's defaults,
+whose zero position offset and identity rotation offset would snap the child onto the parent — send
+`position_offset: [0,0,0]` when that is what you want, e.g. to put a prop in a hand. The position offset is in the
+parent's local space, the rotation offset is applied after the parent's rotation, and the scale offset multiplies
+the parent's world scale. `studio_constraint_set` does not re-capture: read the current values and send them.
+
+**`*_locks` say which axes are driven, not which are frozen.** `[true, true, true]` — the default — means the
+constraint owns all three; `false` on an axis leaves the child's own value there, which is how you get "follow
+horizontally but keep your own height". The field keeps NodesConstraints' own name so a saved scene reads the same
+way.
+
+**`enabled` is not a flag.** Turning a constraint off restores the child to the transform captured when the
+constraint was created (per `reset_position` / `reset_rotation` / `reset_scale`); turning it on re-captures the
+child's current transform as the new resting state. `studio_constraint_set` therefore applies `enabled` after
+every other field in the same call, so the restore follows the constraint as that call leaves it. Deleting
+restores the same way.
+
+**One constraint per pair, in either direction.** NodesConstraints scans its list before adding and silently
+returns nothing on a duplicate, so the pair is checked here first and the error names the existing id.
+
+**Which frame applies a constraint depends on Timeline.** With Timeline installed the pass runs from a Harmony
+postfix on its `Update`; without it, from NodesConstraints' own. The two are not the same pass: the vanilla one
+skips a channel whose guide object has it disabled and ignores `fix_dynamic_bone`, the Timeline one honours
+`fix_dynamic_bone` and ignores the guide flags. `fix_dynamic_bone` is therefore only meaningful while Timeline is
+there, which is also the only configuration tested here.
+
+**Constraints live in the scene file.** `ExtendedSave` transpiles `SceneInfo.Save`/`Load`/`Import`, which is
+exactly what `studio_save_scene` and `studio_load_scene` go through, so constraints round-trip with the scene —
+verified live. They are restored about eight frames after the load, so a `studio_constraint_list` issued
+immediately after `studio_load_scene` can still come back empty; read it again. Like the timeline tools, nothing
+here touches `UndoRedoManager`: constraint edits are not undoable from the Studio UI and leave the scene's undo
+stack intact.
+
+**Its tools are always registered, like Timeline's.** A missing plugin answers `-32001` with the reason, while
+`studio_constraint_list` answers normally with `available: false`; `studio_get_info` reports
+`plugins.nodes_constraints` as the version or `null`. Tested against NodesConstraints 1.3.3.
+
 ## Wire protocol (plugin side)
 
 - `POST /rpc` — JSON-RPC 2.0, method names identical to the MCP tool names, `params` as object.
@@ -165,6 +227,10 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-NodesConstraints (joan6694, 1.3.3.0) — parent/child constraints with offsets, `lookAt`, mirroring, per-axis locks and damping. Deliberately left for later: it overlaps `studio_attach_object`, which already covers the common case, and unlike Timeline it exposes nothing public at all (`_self`, `_constraints` and both `AddConstraint` overloads are private), so every call would be reflection.
+Studio's own workspace operations, none of which have a tool yet: object visibility (`studio_list_objects` reports
+it but nothing writes it), folders (`AddObjectFolder.Add`), renaming — which only persists on folders, since
+`OIFolderInfo.name` is serialised while `TreeNodeObject.textName` is the UI label and nothing else — duplication
+(`Studio.Duplicate`, driven by the selection), in-scene cameras and routes (`OCIRoute` is a sub-API of its own).
+Not covered at all: voices and the `bgmCtrl`/`envCtrl`/`outsideSoundCtrl` settings already present in `SceneInfo`.
 
 Left aside inside the outfit surface: changing the *item* in a slot (`ChangeClothes(kind, id)`, `ChangeAccessory`) and its colours — that is the character maker's job and needs the whole per-sex clothes catalog, which Studio's own Studio-side panels do not expose either. Not covered at all: voices, routes, and the `bgmCtrl`/`envCtrl`/`outsideSoundCtrl` settings already present in `SceneInfo`.

@@ -1042,4 +1042,113 @@ namespace MiraStudio.Core
             .Add("size", Size)
             .Add("modified", Modified);
     }
+
+    // One end of a constraint. A constraint links two raw transforms, so the pair
+    // (object_id, target) is how the API names one: 'path' is the same
+    // root-relative form NodesConstraints writes into the scene file.
+    public sealed class ConstraintNodeDto
+    {
+        public int? ObjectId;
+        public string Target, Path;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("object_id", ObjectId.HasValue ? (JsonNode)ObjectId.Value : JsonNull.Instance)
+            .Add("target", Target)
+            .Add("path", Path);
+    }
+
+    public sealed class ConstraintDto
+    {
+        public int Id;
+        public bool Enabled;
+        public string Alias;
+        public ConstraintNodeDto Parent, Child;
+        public bool Position, Rotation, Scale, LookAt;
+        public bool MirrorPosition, MirrorRotation, MirrorScale;
+        public Vec3 PositionOffset, RotationOffset, ScaleOffset;
+        public float PositionFactor, RotationFactor, ScaleFactor;
+        public float PositionDamp, RotationDamp, ScaleDamp;
+        public bool[] PositionLocks, RotationLocks, ScaleLocks;
+        public bool ResetPosition, ResetRotation, ResetScale;
+        public bool FixDynamicBone;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("id", Id)
+            .Add("enabled", Enabled)
+            .Add("alias", Alias)
+            .Add("parent", Parent != null ? Parent.ToJson() : JsonNull.Instance)
+            .Add("child", Child != null ? Child.ToJson() : JsonNull.Instance)
+            .Add("position", Position)
+            .Add("rotation", Rotation)
+            .Add("scale", Scale)
+            .Add("look_at", LookAt)
+            .Add("mirror_position", MirrorPosition)
+            .Add("mirror_rotation", MirrorRotation)
+            .Add("mirror_scale", MirrorScale)
+            .Add("position_offset", PositionOffset.ToJson())
+            .Add("rotation_offset", RotationOffset.ToJson())
+            .Add("scale_offset", ScaleOffset.ToJson())
+            .Add("position_factor", PositionFactor)
+            .Add("rotation_factor", RotationFactor)
+            .Add("scale_factor", ScaleFactor)
+            .Add("position_damp", PositionDamp)
+            .Add("rotation_damp", RotationDamp)
+            .Add("scale_damp", ScaleDamp)
+            .Add("position_locks", Axes(PositionLocks))
+            .Add("rotation_locks", Axes(RotationLocks))
+            .Add("scale_locks", Axes(ScaleLocks))
+            .Add("reset_position", ResetPosition)
+            .Add("reset_rotation", ResetRotation)
+            .Add("reset_scale", ResetScale)
+            .Add("fix_dynamic_bone", FixDynamicBone);
+
+        private static JsonNode Axes(bool[] axes) => axes == null
+            ? (JsonNode)JsonNull.Instance
+            : new JsonArray().Add(axes[0]).Add(axes[1]).Add(axes[2]);
+    }
+
+    public sealed class ConstraintListDto
+    {
+        public bool Available;
+        public string Version, Unavailable;
+        public int Count;
+        public System.Collections.Generic.List<ConstraintDto> Constraints;
+
+        public JsonNode ToJson()
+        {
+            var node = new JsonObject()
+                .Add("available", Available)
+                .Add("version", Version)
+                .Add("unavailable", Available ? JsonNull.Instance : (JsonNode)Unavailable)
+                .Add("count", Count);
+            if (Constraints != null)
+            {
+                var arr = new JsonArray();
+                foreach (var c in Constraints) arr.Add(c.ToJson());
+                node.Add("constraints", arr);
+            }
+            return node;
+        }
+    }
+
+    public sealed class ConstraintEndpoint
+    {
+        public int ObjectId;
+        public string Target;
+    }
+
+    public sealed class ConstraintPatch
+    {
+        // Create only: a constraint's two nodes are its identity.
+        public ConstraintEndpoint Parent, Child;
+        public bool? Enabled, Position, Rotation, Scale, LookAt;
+        public bool? MirrorPosition, MirrorRotation, MirrorScale;
+        public Vec3? PositionOffset, RotationOffset, ScaleOffset;
+        public float? PositionFactor, RotationFactor, ScaleFactor;
+        public float? PositionDamp, RotationDamp, ScaleDamp;
+        public bool[] PositionLocks, RotationLocks, ScaleLocks;
+        public bool? ResetPosition, ResetRotation, ResetScale;
+        public bool? FixDynamicBone;
+        public string Alias;
+    }
 }

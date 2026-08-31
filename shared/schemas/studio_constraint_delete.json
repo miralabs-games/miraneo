@@ -1,0 +1,18 @@
+{
+  "description": "Delete one or more constraints. Every id is checked before anything is removed, so a bad id leaves the scene untouched. Deleting puts each child back where it was when its constraint was created, unless that constraint had reset_position/reset_rotation/reset_scale turned off. Nothing here touches Studio's undo stack, and nothing here is undoable from the Studio UI. Requires the NodesConstraints plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "description": "one constraint id from studio_constraint_list, or an array of them",
+        "type": ["integer", "array"]
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the remaining constraints, same shape as studio_constraint_list"
+  }
+}

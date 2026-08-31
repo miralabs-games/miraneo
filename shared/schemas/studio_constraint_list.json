@@ -1,0 +1,63 @@
+{
+  "description": "Read every node constraint in the scene. A constraint makes one node (the child) follow another (the parent) every frame — position, rotation and/or scale, with an offset, per-axis selection, mirroring, a look-at mode, a change factor and damping. Unlike studio_attach_object it does not reparent anything, it can link two nodes of two different characters, and it can drive one channel without the others. This is the read-back for the three other studio_constraint_* tools. NodesConstraints is an optional third-party plugin (joan6694): when it is absent this call still succeeds and answers 'available': false with the reason, so check that (or 'plugins.nodes_constraints' in studio_get_info) first. Constraints saved in a scene file come back about eight frames after studio_load_scene returns, so re-read if the list looks empty right after a load.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "object_id": { "type": "integer", "description": "only return the constraints with this scene object at either end (id from studio_list_objects); 'count' still covers the whole scene" }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "available": { "type": "boolean", "description": "false when the NodesConstraints plugin is absent or has not initialised; the three write tools then fail with -32001" },
+      "version": { "type": ["string", "null"], "description": "NodesConstraints' own version, e.g. '1.3.3'" },
+      "unavailable": { "type": ["string", "null"], "description": "why the bridge is unavailable, null when it works" },
+      "count": { "type": "integer", "description": "constraints in the scene, before any object_id filter" },
+      "constraints": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer", "description": "pass this to studio_constraint_set and studio_constraint_delete" },
+            "enabled": { "type": "boolean", "description": "false leaves the constraint configured but idle, and restores the child to what it was when the constraint was created" },
+            "alias": { "type": "string", "description": "the name shown in the NodesConstraints window, empty by default" },
+            "parent": {
+              "type": "object",
+              "description": "the node being followed",
+              "properties": {
+                "object_id": { "type": ["integer", "null"], "description": "the scene object this node belongs to" },
+                "target": { "type": ["string", "null"], "description": "the node's transform name, or 'root' for the object itself; this is what studio_constraint_create takes" },
+                "path": { "type": ["string", "null"], "description": "the same node as a slash path under the object's root — the unambiguous form, also accepted as 'target'" }
+              }
+            },
+            "child": { "type": "object", "description": "the node being driven, same shape as 'parent'" },
+            "position": { "type": "boolean", "description": "whether the constraint drives the child's position" },
+            "rotation": { "type": "boolean" },
+            "scale": { "type": "boolean" },
+            "look_at": { "type": "boolean", "description": "rotation mode: instead of copying the parent's rotation, the child is turned to face the parent's position" },
+            "mirror_position": { "type": "boolean", "description": "the child moves opposite to the parent instead of with it" },
+            "mirror_rotation": { "type": "boolean" },
+            "mirror_scale": { "type": "boolean" },
+            "position_offset": { "type": "array", "description": "[x, y, z] in the parent's local space; [0,0,0] puts the child exactly on the parent" },
+            "rotation_offset": { "type": "array", "description": "[x, y, z] euler degrees, applied after the parent's rotation" },
+            "scale_offset": { "type": "array", "description": "[x, y, z] multipliers against the parent's world scale; [1,1,1] copies it" },
+            "position_factor": { "type": "number", "description": "how much of the parent's movement since the constraint was created reaches the child; 1 = the offset is held exactly, 0 = the child stays put, 2 = it moves twice as far" },
+            "rotation_factor": { "type": "number" },
+            "scale_factor": { "type": "number" },
+            "position_damp": { "type": "number", "description": "0 = the child snaps every frame; above 0 it lags behind, higher being tighter" },
+            "rotation_damp": { "type": "number" },
+            "scale_damp": { "type": "number" },
+            "position_locks": { "type": "array", "description": "[x, y, z] booleans: true means the constraint drives that axis, false means the child keeps its own value there" },
+            "rotation_locks": { "type": "array" },
+            "scale_locks": { "type": "array" },
+            "reset_position": { "type": "boolean", "description": "whether disabling or deleting the constraint puts the child's position back where it was when the constraint was created" },
+            "reset_rotation": { "type": "boolean" },
+            "reset_scale": { "type": "boolean" },
+            "fix_dynamic_bone": { "type": "boolean", "description": "skip this constraint in the per-frame pass so a dynamic bone (hair, skirt, breast) keeps driving the child; only has an effect while the Timeline plugin is installed" }
+          }
+        }
+      }
+    }
+  }
+}

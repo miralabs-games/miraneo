@@ -229,6 +229,70 @@ Rules that follow from the above:
 
 **Nothing here goes through `UndoRedoManager`.** Timeline keeps its own history, so timeline edits are not undoable from the Studio UI — and, symmetrically, they leave the scene's undo stack untouched.
 
+## NodesConstraints bridge (optional plugin, reflection only)
+
+`Adapters/NodesConstraintsAdapter.cs` is the only file that touches NodesConstraints (joan6694,
+`com.joan6694.illusionplugins.nodesconstraints`, tested at 1.3.3). Same shape as the Timeline bridge — no reference
+assembly, one lazy all-or-nothing `Bind()`, a soft `BepInDependency`, tools registered either way — but a level
+deeper: **nothing is public**, the nested `Constraint` type included, so the type itself is resolved by reflection
+before any of its members can be.
+
+| Need | NodesConstraints API used | Access |
+|---|---|---|
+| Plugin instance, constraint list | `_self`, `_constraints` (`List<Constraint>`) | private static / private |
+| Create | `AddConstraint(...)`, the 26-argument overload | private |
+| Delete | `RemoveConstraintAt(int)` | private |
+| Enable / disable | `SetConstraintEnabled(Constraint, bool)` | private |
+| Everything a constraint holds | ~30 fields on `Constraint` | public fields on a **private nested type** |
+| Per-axis masks | `TransformLock(bool, bool, bool)` and its `x`/`y`/`z` | public nested type |
+
+Rules that follow from the decompilation:
+
+- **`AddConstraint` refuses duplicates by returning `null`.** It scans `_constraints` for the same pair of
+  transforms *in either direction* and gives back nothing — no exception, no message. The bridge checks the pair
+  itself first so the error can name the existing constraint, and still treats a `null` as a failure.
+- **`SetConstraintEnabled` is a transaction, not a setter.** Going `true → false` writes
+  `originalChildPosition`/`Rotation`/`Scale` back into both `childTransform` and the child `GuideObject`'s
+  `changeAmount`, gated on `position`/`rotation`/`scale` and `resetOriginal*`; going `false → true` re-captures
+  `childTransform.localPosition`/`localRotation` as the new originals. Writing `.enabled` directly would skip both
+  and leave the child wherever the constraint had dragged it, so `Set` applies `enabled` last and only through the
+  method. `RemoveConstraintAt` performs the same restore before dropping the entry.
+- **There are two appliers and they are not equivalent.** `Update` calls `ApplyNodesConstraints()` only when
+  `!_hasTimeline`; with Timeline installed the work is done by `Timeline_Update_Postfix` → `ApplyConstraints()`.
+  The vanilla path requires `child != null || parent != null` and honours `child.enablePos/enableRot/enableScale`,
+  ignoring `fixDynamicBone`; the Timeline path skips constraints with `fixDynamicBone` and ignores the guide
+  flags. `_hasTimeline` is set 10 frames after `Awake` by `TimelineCompatibility.Init()`.
+- **The offsets are three different spaces.** `UpdatePosition` computes
+  `parentTransform.TransformPoint(movement * (factor - 1) + positionOffset)`, so the position offset is
+  parent-local and `Vector3.zero` puts the child on the parent's origin — which is why an omitted offset is
+  captured (`parentTransform.InverseTransformPoint(childTransform.position)`, the plugin's own *Use current*
+  formula) rather than defaulted. `rotationOffset` is post-multiplied onto the parent's world rotation
+  (`Inverse(parent.rotation) * child.rotation` when captured, or `Inverse(lookRotation) * child.rotation` in
+  `lookAt` mode, mirrored quaternion included); `scaleOffset` multiplies `originalParentScale` and is captured as
+  `child.lossyScale / parent.lossyScale`.
+- **`TransformLock` is a mask of driven axes, not of frozen ones.** `UpdatePosition` overwrites the computed value
+  with the child's own on every axis whose lock is `false`. The ctor default is `(true, true, true)`.
+- **`GetPositionMovement` is `parentTransform.position - originalParentPosition`**, and `originalParent*` is
+  captured inside `AddConstraint`: a constraint tracks the parent's movement *since it was created*, not the
+  parent's absolute transform. The same capture is what disabling and deleting restore against.
+- **`UpdateScale` divides by `childTransform.parent.lossyScale` with no null guard**, in a loop that runs every
+  frame outside any API call. A scale link on a child at the scene root is refused up front for that reason.
+- **A constraint's identity is its instance.** `Constraint` overrides neither `Equals` nor `GetHashCode`, so the
+  identity hash is stable for its lifetime and is what the API hands out — the same choice the timeline bridge
+  makes for interpolables. Its index in `_constraints` is not usable: `RemoveConstraintAt` shifts everything after
+  it, so a multi-id delete removes in descending index order.
+- **Persistence is `ExtendedSave`, not the plugin.** NodesConstraints subscribes to
+  `ExtendedSave.SceneBeingSaved/Loaded/Imported`, and `HS2_ExtensibleSaveFormat` transpiles
+  `SceneInfo.Save`/`Load`/`Import` — the exact methods `SaveScene` and `LoadSceneCoroutine` go through, so the
+  hand-rolled save path carries third-party scene data unchanged. Restoration is deferred by
+  `ExecuteDelayed(..., 8)`, hence the eight-frame gap after a load.
+- **`PopulateTimeline` publishes exactly one model, `constraintEnabled`**, whose `getParameter` and
+  `isCompatibleWithTarget` both read the private `_selectedConstraint`. Animating a constraint from the timeline
+  tools would mean borrowing that field the way `LoadSingle`/`SaveSingle` borrow `_selectedOCI`; deliberately not
+  done.
+- Nothing here goes through `UndoRedoManager` — no command exists — and nothing here destroys an object or rebases
+  a `changeAmount` owned by Studio, so the undo stack is left usable rather than cleared.
+
 ## Reverse-engineering workflow
 
 `ilspycmd` (dotnet global tool) decompiles the exact call sequences before anything is wired up:

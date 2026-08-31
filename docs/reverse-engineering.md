@@ -63,10 +63,11 @@ Caveats:
 | Plugin | Version | Relevance for MiraStudio |
 |---|---|---|
 | HS2API (IllusionModdingAPI) | 1.41 | official modding API, XML docs beside the DLL |
-| Timeline (joan6694) | 1.4.1.0 | keyframe animation — Phase 4 target; no reference DLL, integration is reflection-based |
+| Timeline (joan6694) | 1.4.1.0 | keyframe animation — Phase 7; no reference DLL, integration is reflection-based |
 | HS2_Screencap (BepisPlugins R20) | 20.0 | screenshot reference implementation |
 | RuntimeUnityEditor | 5.4.0 | live inspection during development |
-| NodesConstraints | 1.3.3.0 | constraints — Phase 5 |
+| NodesConstraints | 1.3.3.0 | node constraints — Phase 8; no reference DLL either, and nothing public at all (see [studio-api.md](studio-api.md)) |
+| HS2_ExtensibleSaveFormat (BepisPlugins) | R20 | transpiles `SceneInfo.Save`/`Load`/`Import`, so third-party scene data rides along with MiraStudio's own save/load path |
 | HS2PE (PoseEditor) | — | pose data reference |
 | ConfigurationManager | 18.3.0 | config UI |
 

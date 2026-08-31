@@ -1,0 +1,40 @@
+{
+  "description": "Change one existing constraint. Every field is optional and absolute, and only the ones present are written, so repeating a call is idempotent. The two nodes are the constraint's identity and cannot be changed: delete it and create another to re-target. 'enabled' is applied last and is not a plain flag — turning it off restores the child to the transform captured when the constraint was created (subject to reset_position/rotation/scale as this same call leaves them), turning it on re-captures the child's current transform as the new resting state. Offsets are not re-captured here the way studio_constraint_create captures them: read the current ones with studio_constraint_list and send the values you want. Requires the NodesConstraints plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "constraint id from studio_constraint_list" },
+      "enabled": { "type": "boolean", "description": "applied after every other field in this call" },
+      "alias": { "type": "string", "description": "empty string clears it" },
+      "position": { "type": "boolean" },
+      "rotation": { "type": "boolean" },
+      "scale": { "type": "boolean", "description": "refused when the child node is at the scene root" },
+      "look_at": { "type": "boolean", "description": "turn the child to face the parent instead of copying its rotation; the rotation offset decides which way is 'front'" },
+      "mirror_position": { "type": "boolean" },
+      "mirror_rotation": { "type": "boolean" },
+      "mirror_scale": { "type": "boolean" },
+      "position_offset": { "type": "array", "description": "[x, y, z] in the parent's local space" },
+      "rotation_offset": { "type": "array", "description": "[x, y, z] euler degrees" },
+      "scale_offset": { "type": "array", "description": "[x, y, z] multipliers on the parent's world scale" },
+      "position_factor": { "type": "number" },
+      "rotation_factor": { "type": "number" },
+      "scale_factor": { "type": "number" },
+      "position_damp": { "type": "number", "description": "0 snaps every frame; above 0 the child lags behind" },
+      "rotation_damp": { "type": "number" },
+      "scale_damp": { "type": "number" },
+      "position_locks": { "type": "array", "description": "[x, y, z] booleans: true drives the axis, false leaves the child's own value" },
+      "rotation_locks": { "type": "array" },
+      "scale_locks": { "type": "array" },
+      "reset_position": { "type": "boolean" },
+      "reset_rotation": { "type": "boolean" },
+      "reset_scale": { "type": "boolean" },
+      "fix_dynamic_bone": { "type": "boolean" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the constraint after the change, same shape as one entry of studio_constraint_list's 'constraints'"
+  }
+}

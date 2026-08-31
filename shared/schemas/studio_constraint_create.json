@@ -1,0 +1,59 @@
+{
+  "description": "Make one node follow another every frame. 'parent' is the node being followed, 'child' the one being driven — a prop that stays in a hand, a head that looks at another character, a bone mirrored onto another rig. Both are named as {object_id, target}: 'root' (or no target) for the object itself, otherwise a bone or IK target name from studio_list_bones, an attach-point name from studio_list_attach_points, or any transform name or slash path under the object. Unlike studio_attach_object nothing is reparented, the scene tree is untouched and the two nodes can belong to two different characters. Every offset left out is captured from where the nodes are right now, so the call freezes the current relation instead of snapping the child onto the parent; pass an offset explicitly to override. Only one constraint can exist per pair of nodes, in either direction. Not undoable from the Studio UI, but it leaves Studio's undo stack alone. Requires the NodesConstraints plugin.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "parent": {
+        "type": "object",
+        "description": "the node being followed",
+        "properties": {
+          "object_id": { "type": "integer", "description": "scene object id from studio_list_objects" },
+          "target": { "type": "string", "description": "'root' or omitted for the object itself; otherwise a bone or IK target from studio_list_bones, an attach point from studio_list_attach_points, or a transform name or slash path under the object's root" }
+        },
+        "required": ["object_id"],
+        "additionalProperties": false
+      },
+      "child": {
+        "type": "object",
+        "description": "the node being driven, same shape as 'parent'",
+        "properties": {
+          "object_id": { "type": "integer" },
+          "target": { "type": "string" }
+        },
+        "required": ["object_id"],
+        "additionalProperties": false
+      },
+      "enabled": { "type": "boolean", "default": true },
+      "alias": { "type": "string", "description": "a name of your own, shown in the NodesConstraints window" },
+      "position": { "type": "boolean", "default": true, "description": "drive the child's position" },
+      "rotation": { "type": "boolean", "default": true },
+      "scale": { "type": "boolean", "default": true, "description": "refused when the child node is at the scene root: NodesConstraints divides by its parent's scale with no guard, and would throw every frame outside this call" },
+      "look_at": { "type": "boolean", "default": false, "description": "rotation mode: turn the child to face the parent's position instead of copying the parent's rotation. The captured rotation offset then encodes which way is 'front'." },
+      "mirror_position": { "type": "boolean", "default": false, "description": "the child moves opposite to the parent" },
+      "mirror_rotation": { "type": "boolean", "default": false },
+      "mirror_scale": { "type": "boolean", "default": false },
+      "position_offset": { "type": "array", "description": "[x, y, z] in the parent's local space. Omit to capture where the child is now; [0,0,0] puts it exactly on the parent." },
+      "rotation_offset": { "type": "array", "description": "[x, y, z] euler degrees applied after the parent's rotation. Omit to capture the current relative rotation; [0,0,0] makes the child copy the parent outright." },
+      "scale_offset": { "type": "array", "description": "[x, y, z] multipliers on the parent's world scale. Omit to capture the current ratio; [1,1,1] copies the parent's scale." },
+      "position_factor": { "type": "number", "default": 1, "description": "how much of the parent's movement reaches the child: 1 holds the offset exactly, 0 pins the child, 2 exaggerates" },
+      "rotation_factor": { "type": "number", "default": 1 },
+      "scale_factor": { "type": "number", "default": 1 },
+      "position_damp": { "type": "number", "default": 0, "description": "0 snaps every frame; above 0 the child lags behind, which is what makes a follow look physical" },
+      "rotation_damp": { "type": "number", "default": 0 },
+      "scale_damp": { "type": "number", "default": 0 },
+      "position_locks": { "type": "array", "description": "[x, y, z] booleans, all true by default: false on an axis leaves the child's own value there" },
+      "rotation_locks": { "type": "array" },
+      "scale_locks": { "type": "array" },
+      "reset_position": { "type": "boolean", "default": true, "description": "put the child's position back where it is now when the constraint is later disabled or deleted" },
+      "reset_rotation": { "type": "boolean", "default": true },
+      "reset_scale": { "type": "boolean", "default": true },
+      "fix_dynamic_bone": { "type": "boolean", "default": false, "description": "skip the per-frame pass so a dynamic bone keeps driving the child; only effective while the Timeline plugin is installed" }
+    },
+    "required": ["parent", "child"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "the constraint, same shape as one entry of studio_constraint_list's 'constraints'"
+  }
+}
