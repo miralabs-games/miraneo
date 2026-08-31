@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace MiraStudio.Core
 {
     // Extraction of RPC parameters with strict validation: anything malformed is
@@ -150,6 +152,75 @@ namespace MiraStudio.Core
             LookNeck = OptIntN(p, "look_neck"),
             Categories = BoolMap(p, "expression_categories"),
         };
+
+        public static KinematicsPatch Kinematics(JsonObject p) => new KinematicsPatch
+        {
+            Mode = OptString(p, "mode"),
+            Reflect = OptString(p, "reflect"),
+            Fk = Groups(p, "fk", KinematicGroups.Fk),
+            Ik = Groups(p, "ik", KinematicGroups.Ik),
+        };
+
+        // {"body": true, "skirt": false} — unlisted groups keep their current flag.
+        private static bool?[] Groups(JsonObject p, string key, string[] names)
+        {
+            var node = p.Get(key);
+            if (node == null || node is JsonNull) return null;
+            var obj = node as JsonObject;
+            if (obj == null) throw Invalid(key, "an object mapping group name to boolean (" + KinematicGroups.Join(names) + ")");
+            var flags = new bool?[names.Length];
+            foreach (var name in obj.Keys)
+            {
+                var index = KinematicGroups.Index(names, name);
+                if (index < 0)
+                    throw new StudioApiException(StudioApiException.InvalidParams,
+                        "unknown " + key + " group '" + name + "'; expected one of " + KinematicGroups.Join(names));
+                var value = obj.Get(name) as JsonBool;
+                if (value == null) throw Invalid(key + "." + name, "a boolean");
+                flags[index] = value.Value;
+            }
+            return flags;
+        }
+
+        // {"cf_J_ArmUp00_L": [0, 0, 30]} — one entry per bone, absolute euler angles.
+        public static List<KeyValuePair<string, Vec3>> BoneRotations(JsonObject p)
+        {
+            var obj = p.Get("bones") as JsonObject;
+            if (obj == null) throw Invalid("bones", "an object mapping bone name to a rotation [x, y, z]");
+            var list = new List<KeyValuePair<string, Vec3>>();
+            foreach (var name in obj.Keys)
+            {
+                var rot = OptVec3(obj, name);
+                if (!rot.HasValue) throw Invalid("bones." + name, "an array of 3 numbers");
+                list.Add(new KeyValuePair<string, Vec3>(name, rot.Value));
+            }
+            if (list.Count == 0) throw Invalid("bones", "a non-empty object");
+            return list;
+        }
+
+        // {"left_hand": {"pos": [...], "rot": [...]}} — 'rot' only on rotatable targets.
+        public static List<IkTargetPatch> IkTargets(JsonObject p)
+        {
+            var obj = p.Get("targets") as JsonObject;
+            if (obj == null) throw Invalid("targets", "an object mapping IK target name to {pos, rot}");
+            var list = new List<IkTargetPatch>();
+            foreach (var name in obj.Keys)
+            {
+                var entry = obj.Get(name) as JsonObject;
+                if (entry == null) throw Invalid("targets." + name, "an object with 'pos' and/or 'rot'");
+                var patch = new IkTargetPatch
+                {
+                    Target = name,
+                    Pos = OptVec3(entry, "pos"),
+                    Rot = OptVec3(entry, "rot"),
+                };
+                if (!patch.Pos.HasValue && !patch.Rot.HasValue)
+                    throw Invalid("targets." + name, "an object with 'pos' and/or 'rot'");
+                list.Add(patch);
+            }
+            if (list.Count == 0) throw Invalid("targets", "a non-empty object");
+            return list;
+        }
 
         // {"0": true, "3": false} — keys are expression category indices.
         private static System.Collections.Generic.Dictionary<int, bool> BoolMap(JsonObject p, string key)

@@ -1,0 +1,29 @@
+{
+  "description": "Move a character's IK targets — drag a hand or a foot somewhere and let Studio solve the limb, instead of rotating every joint by hand. Values are absolute offsets from the target's rest position, in scene units, so repeating a call is idempotent; read the current ones from studio_list_bones. Scene scale is not metric (a character is roughly 15 units tall), so derive distances from the transforms you read rather than assuming metres. Pass several targets in one call: the moves become a single undo step. Requires mode 'ik' (studio_set_character_kinematics) and the target's IK group to be on. Only the four hand and foot targets accept 'rot'; the shoulder, thigh and '_chain' pole targets are position-only.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "targets": {
+        "type": "object",
+        "description": "one entry per IK target, keyed by the target name from studio_list_bones",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "absolute offset from the target's rest position, in scene units" },
+            "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "absolute euler angles in degrees; only accepted on left_hand, right_hand, left_foot and right_foot ('rotatable': true in studio_list_bones)" }
+          },
+          "additionalProperties": false,
+          "minProperties": 1
+        },
+        "minProperties": 1
+      }
+    },
+    "required": ["id", "targets"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "same shape as studio_list_bones, restricted to the targets this call touched ('bones' is empty)"
+  }
+}

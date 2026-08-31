@@ -1,0 +1,50 @@
+{
+  "description": "List the posable skeleton of one character: every FK bone and every IK target, with the names studio_set_character_bone and studio_set_character_ik expect. Which bones exist depends on the character's rig, hair and clothes (roughly 135 on a male, 150 on a female), so call this before posing rather than guessing bone names. Bone names are the rig's own transform names ('cf_J_ArmUp00_L', 'cf_J_Hand_Thumb01_R') and are unique per character; 'label' is Studio's Japanese caption and is shared by several bones, so never use it as a key.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "character_id": { "type": "integer" },
+      "mode": { "type": "string", "enum": ["none", "fk", "ik"], "description": "the chain currently driving the skeleton; 'bones' can only be written while this is 'fk', 'ik_targets' only while it is 'ik'" },
+      "bones": {
+        "type": "array",
+        "description": "FK bones, rotation only — Studio gives bone guides no position or scale handle",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer", "description": "Studio's internal bone id" },
+            "bone": { "type": "string", "description": "the name to pass to studio_set_character_bone, e.g. 'cf_J_ArmLow01_L'" },
+            "label": { "type": ["string", "null"], "description": "Studio's caption, in Japanese and not unique — display only" },
+            "group": { "type": ["string", "null"], "enum": ["hair", "neck", "breast", "body", "right_hand", "left_hand", "skirt", null], "description": "the FK group this bone answers to; it must be on in studio_set_character_kinematics before the bone can be posed" },
+            "level": { "type": "integer" },
+            "weighted": { "type": "boolean", "description": "the bone drives mesh vertices on the character's current clothes. **false means posing it does nothing** — FK skips unweighted bones, which is the normal state of the 48 skirt bones when no skirt is worn" },
+            "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "current local euler angles, degrees; round-trips into studio_set_character_bone" }
+          }
+        }
+      },
+      "ik_targets": {
+        "type": "array",
+        "description": "the 13 IK targets, always present in this order",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer" },
+            "target": { "type": "string", "enum": ["body", "left_shoulder", "left_arm_chain", "left_hand", "right_shoulder", "right_arm_chain", "right_hand", "left_thigh", "left_leg_chain", "left_foot", "right_thigh", "right_leg_chain", "right_foot"], "description": "the name to pass to studio_set_character_ik; the '_chain' targets are the elbow/knee poles that steer where the joint bends" },
+            "group": { "type": ["string", "null"], "enum": ["body", "right_leg", "left_leg", "right_arm", "left_arm", null], "description": "the IK group this target answers to; it must be on in studio_set_character_kinematics before the target can be moved" },
+            "bone": { "type": ["string", "null"], "description": "the rig bone this target steers" },
+            "rotatable": { "type": "boolean", "description": "the target has a rotation handle. Only the four hand and foot targets do; studio_set_character_ik rejects 'rot' on the others" },
+            "pos": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "current offset from the target's rest position, in scene units" },
+            "rot": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3, "description": "current euler angles, degrees; always [0,0,0] when 'rotatable' is false" }
+          }
+        }
+      }
+    }
+  }
+}

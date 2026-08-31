@@ -76,6 +76,7 @@ namespace MiraStudio
                 Params.OptInt(p, "limit", 100)).ConvertAll(e => e.ToJson())), 180000);
             _server.Register("studio_list_attach_points", p => ToArray(
                 _service.ListAttachPoints(Params.ReqInt(p, "id")).ConvertAll(e => e.ToJson())));
+            _server.Register("studio_list_bones", p => _service.ListBones(Params.ReqInt(p, "id")).ToJson());
 
             _server.RegisterAsync("studio_set_camera", p => CameraService.SetCamera(this, new CameraPatch
             {
@@ -128,6 +129,15 @@ namespace MiraStudio
                     point,
                     pointName).ToJson();
             });
+            _server.RegisterAsync("studio_set_character_kinematics", p => KinematicsService.SetKinematics(this,
+                Params.ReqInt(p, "id"),
+                Params.Kinematics(p)), 30000);
+            _server.Register("studio_set_character_bone", p => _service.SetCharacterBone(
+                Params.ReqInt(p, "id"),
+                Params.BoneRotations(p)).ToJson());
+            _server.Register("studio_set_character_ik", p => _service.SetCharacterIk(
+                Params.ReqInt(p, "id"),
+                Params.IkTargets(p)).ToJson());
             _server.RegisterAsync("studio_load_scene", p => SceneService.LoadScene(this, Params.ReqString(p, "path")), 180000);
             _server.RegisterAsync("studio_save_scene", p => SceneService.SaveScene(this,
                 Params.OptString(p, "name"),

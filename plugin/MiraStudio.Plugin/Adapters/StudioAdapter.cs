@@ -775,6 +775,310 @@ namespace MiraStudio.Adapters
             if (patch.Scale.HasValue) ca.scale = U(patch.Scale.Value);
         }
 
+        public static CharacterDto GetCharacter(int id) => ToCharacterDto(id, RequireCharacter(id));
+
+        public static SkeletonDto ListBones(int id)
+        {
+            var chr = RequireCharacter(id);
+            var dto = NewSkeleton(id, chr);
+            foreach (var bone in chr.listBones) dto.Bones.Add(ToBoneDto(bone));
+            for (var i = 0; i < chr.listIKTarget.Count; i++) dto.IkTargets.Add(ToIkDto(i, chr.listIKTarget[i]));
+            return dto;
+        }
+
+        // Mode first, then the group flags: ActiveKinematicMode re-applies every group
+        // from the stored flags, so a patch that carries both would otherwise lose its
+        // group values. Neither call is undoable, but neither destroys an object nor
+        // rebases a changeAmount, so unlike attach/delete the undo stack stays valid.
+        public static void SetKinematics(int id, KinematicsPatch patch)
+        {
+            var chr = RequireCharacter(id);
+            if (patch == null || patch.Mode == null && patch.Fk == null && patch.Ik == null) return;
+
+            if (patch.Mode != null)
+            {
+                switch (patch.Mode)
+                {
+                    case "fk":
+                        chr.ActiveKinematicMode(SNeo.OICharInfo.KinematicMode.FK, true, false);
+                        break;
+                    case "ik":
+                        chr.ActiveKinematicMode(SNeo.OICharInfo.KinematicMode.IK, true, false);
+                        break;
+                    case "none":
+                        chr.ActiveKinematicMode(SNeo.OICharInfo.KinematicMode.FK, false, false);
+                        chr.ActiveKinematicMode(SNeo.OICharInfo.KinematicMode.IK, false, false);
+                        break;
+                    default:
+                        throw new StudioApiException(StudioApiException.InvalidParams,
+                            "parameter 'mode' must be 'fk', 'ik' or 'none'");
+                }
+            }
+
+            if (patch.Fk != null)
+                for (var i = 0; i < patch.Fk.Length; i++)
+                    if (patch.Fk[i].HasValue)
+                        chr.ActiveFK(SNeo.FKCtrl.parts[i], patch.Fk[i].Value);
+
+            if (patch.Ik != null)
+                for (var i = 0; i < patch.Ik.Length; i++)
+                    if (patch.Ik[i].HasValue)
+                        chr.ActiveIK((SNeo.OIBoneInfo.BoneGroup)(1 << i), patch.Ik[i].Value);
+        }
+
+        // The masks Studio's own reflect buttons use: FK skips the groups driven by
+        // dynamic bones (hair, breast, skirt), IK covers all five of its groups.
+        private const SNeo.OIBoneInfo.BoneGroup ReflectFkMask = (SNeo.OIBoneInfo.BoneGroup)353;
+        private const SNeo.OIBoneInfo.BoneGroup ReflectIkMask = (SNeo.OIBoneInfo.BoneGroup)31;
+
+        public static void RequireReflect(string reflect)
+        {
+            if (reflect == null || reflect == "fk" || reflect == "ik" || reflect == "both") return;
+            throw new StudioApiException(StudioApiException.InvalidParams,
+                "parameter 'reflect' must be 'fk', 'ik' or 'both'");
+        }
+
+        // Reads the skeleton as it currently stands into the change amounts. Must run
+        // after the Animator has written this frame's pose, hence the caller's wait.
+        public static void Reflect(int id, string reflect)
+        {
+            var chr = RequireCharacter(id);
+            if (reflect == "fk" || reflect == "both")
+            {
+                if (chr.fkCtrl == null)
+                    throw new StudioApiException(StudioApiException.OperationFailed, "character " + id + " has no FK controller");
+                chr.fkCtrl.CopyBone(ReflectFkMask);
+            }
+            if (reflect == "ik" || reflect == "both")
+            {
+                if (chr.ikCtrl == null)
+                    throw new StudioApiException(StudioApiException.OperationFailed, "character " + id + " has no IK controller");
+                chr.ikCtrl.CopyBone(ReflectIkMask);
+            }
+        }
+
+        public static SkeletonDto SetCharacterBone(int id, List<KeyValuePair<string, Vec3>> rotations)
+        {
+            var chr = RequireCharacter(id);
+            var oi = chr.oiCharInfo;
+            if (!oi.enableFK)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "FK is off on character " + id + ", so bone rotations would be stored and never applied; " +
+                    "call studio_set_character_kinematics with mode='fk' first");
+
+            var index = BoneIndex(chr);
+            var targets = new List<SNeo.OCIChar.BoneInfo>(rotations.Count);
+            var infos = new SNeo.GuideCommand.EqualsInfo[rotations.Count];
+            for (var i = 0; i < rotations.Count; i++)
+            {
+                var name = rotations[i].Key;
+                SNeo.OCIChar.BoneInfo bone;
+                if (!index.TryGetValue(name, out bone))
+                    throw new StudioApiException(StudioApiException.InvalidParams,
+                        "character " + id + " has no bone '" + name + "' (use studio_list_bones)");
+
+                var group = FkGroupIndex(bone.boneGroup);
+                if (group < 0)
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "bone '" + name + "' belongs to no FK group and cannot be posed");
+                if (!oi.activeFK[group])
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "bone '" + name + "' is in the FK group '" + KinematicGroups.Fk[group] + "', which is off on character " + id +
+                        "; enable it with studio_set_character_kinematics fk={\"" + KinematicGroups.Fk[group] + "\": true}");
+                // FKCtrl.Update applies a bone only while `enable & boneWeight`, so an
+                // unweighted bone would take the value and never move the mesh.
+                if (!bone.boneWeight)
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "bone '" + name + "' drives no mesh on this character's current clothes ('weighted': false in studio_list_bones), " +
+                        "so FK skips it");
+
+                var ca = bone.boneInfo.changeAmount;
+                var key = bone.boneInfo.dicKey;
+                if (!ReferenceEquals(SNeo.Studio.GetChangeAmount(key), ca))
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "bone '" + name + "' is not registered in Studio's change-amount table and cannot be posed");
+                targets.Add(bone);
+                infos[i] = Equals(key, ca.rot, U(rotations[i].Value));
+            }
+
+            // One command for the whole batch, so the agent's edit is a single undo step.
+            Singleton<SNeo.UndoRedoManager>.Instance.Do(new SNeo.GuideCommand.RotationEqualsCommand(infos));
+            var dto = NewSkeleton(id, chr);
+            foreach (var bone in targets) dto.Bones.Add(ToBoneDto(bone));
+            return dto;
+        }
+
+        public static SkeletonDto SetCharacterIk(int id, List<IkTargetPatch> patches)
+        {
+            var chr = RequireCharacter(id);
+            var oi = chr.oiCharInfo;
+            if (!oi.enableIK)
+                throw new StudioApiException(StudioApiException.OperationFailed,
+                    "IK is off on character " + id + ", so target moves would be stored and never applied; " +
+                    "call studio_set_character_kinematics with mode='ik' first");
+
+            var order = new List<int>(patches.Count);
+            var moves = new List<SNeo.GuideCommand.EqualsInfo>();
+            var rotations = new List<SNeo.GuideCommand.EqualsInfo>();
+            foreach (var patch in patches)
+            {
+                var index = IkTargetIndex(patch.Target);
+                if (index < 0 || index >= chr.listIKTarget.Count)
+                    throw new StudioApiException(StudioApiException.InvalidParams,
+                        "character " + id + " has no IK target '" + patch.Target + "' (use studio_list_bones)");
+
+                var target = chr.listIKTarget[index];
+                var group = IkGroupIndex(target.targetInfo.group);
+                if (group < 0 || !oi.activeIK[group])
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "IK target '" + patch.Target + "' is in the group '" + (group < 0 ? "?" : KinematicGroups.Ik[group]) +
+                        "', which is off on character " + id + "; enable it with studio_set_character_kinematics ik={\"" +
+                        (group < 0 ? "?" : KinematicGroups.Ik[group]) + "\": true}");
+                // IKInfo.CopyBone zeroes rot on targets whose guide has no rotation
+                // handle, so a rotation written there is discarded on the next reflect.
+                if (patch.Rot.HasValue && !Rotatable(target))
+                    throw new StudioApiException(StudioApiException.InvalidParams,
+                        "IK target '" + patch.Target + "' has no rotation handle ('rotatable': false in studio_list_bones); " +
+                        "only the hand and foot targets can be rotated");
+
+                var ca = target.targetInfo.changeAmount;
+                var key = target.targetInfo.dicKey;
+                if (!ReferenceEquals(SNeo.Studio.GetChangeAmount(key), ca))
+                    throw new StudioApiException(StudioApiException.OperationFailed,
+                        "IK target '" + patch.Target + "' is not registered in Studio's change-amount table and cannot be moved");
+
+                if (patch.Pos.HasValue) moves.Add(Equals(key, ca.pos, U(patch.Pos.Value)));
+                if (patch.Rot.HasValue) rotations.Add(Equals(key, ca.rot, U(patch.Rot.Value)));
+                order.Add(index);
+            }
+
+            var undo = Singleton<SNeo.UndoRedoManager>.Instance;
+            if (moves.Count > 0) undo.Do(new SNeo.GuideCommand.MoveEqualsCommand(moves.ToArray()));
+            if (rotations.Count > 0) undo.Do(new SNeo.GuideCommand.RotationEqualsCommand(rotations.ToArray()));
+
+            var dto = NewSkeleton(id, chr);
+            foreach (var index in order) dto.IkTargets.Add(ToIkDto(index, chr.listIKTarget[index]));
+            return dto;
+        }
+
+        private static SkeletonDto NewSkeleton(int id, SNeo.OCIChar chr)
+        {
+            var oi = chr.oiCharInfo;
+            return new SkeletonDto
+            {
+                CharacterId = id,
+                Mode = oi.enableIK ? "ik" : oi.enableFK ? "fk" : "none",
+                Bones = new List<BoneDto>(),
+                IkTargets = new List<IkTargetDto>(),
+            };
+        }
+
+        private static BoneDto ToBoneDto(SNeo.OCIChar.BoneInfo bone)
+        {
+            var info = Singleton<SNeo.Info>.Instance;
+            SNeo.Info.BoneInfo catalog = null;
+            if (info != null) info.dicBoneInfo.TryGetValue(bone.boneID, out catalog);
+            var group = FkGroupIndex(bone.boneGroup);
+            return new BoneDto
+            {
+                Id = bone.boneID,
+                Bone = BoneName(bone, catalog),
+                Label = catalog != null ? catalog.name : null,
+                Group = group >= 0 ? KinematicGroups.Fk[group] : null,
+                Level = bone.boneInfo.level,
+                Weighted = bone.boneWeight,
+                Rot = V(bone.boneInfo.changeAmount.rot),
+            };
+        }
+
+        private static IkTargetDto ToIkDto(int index, SNeo.OCIChar.IKInfo target)
+        {
+            var ca = target.targetInfo.changeAmount;
+            var group = IkGroupIndex(target.targetInfo.group);
+            return new IkTargetDto
+            {
+                Id = target.targetInfo.dicKey,
+                Target = IkTargetName(index),
+                Group = group >= 0 ? KinematicGroups.Ik[group] : null,
+                Bone = target.boneObject != null ? target.boneObject.name : null,
+                Rotatable = Rotatable(target),
+                Pos = V(ca.pos),
+                Rot = V(ca.rot),
+            };
+        }
+
+        private static bool Rotatable(SNeo.OCIChar.IKInfo target)
+        {
+            try { return target.guideObject.enableRot; }
+            catch { return false; }
+        }
+
+        // The Excel bone name is the stable identifier: it matches the Unity transform
+        // and is unique per rig, while Info.BoneInfo.name is a shared Japanese label.
+        private static string BoneName(SNeo.OCIChar.BoneInfo bone, SNeo.Info.BoneInfo catalog)
+        {
+            if (catalog != null && !string.IsNullOrEmpty(catalog.bone)) return catalog.bone;
+            try { return bone.guideObject.transformTarget.name; }
+            catch { return "bone_" + bone.boneID; }
+        }
+
+        private static Dictionary<string, SNeo.OCIChar.BoneInfo> BoneIndex(SNeo.OCIChar chr)
+        {
+            var info = Singleton<SNeo.Info>.Instance;
+            var map = new Dictionary<string, SNeo.OCIChar.BoneInfo>();
+            foreach (var bone in chr.listBones)
+            {
+                SNeo.Info.BoneInfo catalog = null;
+                if (info != null) info.dicBoneInfo.TryGetValue(bone.boneID, out catalog);
+                map[BoneName(bone, catalog)] = bone;
+            }
+            return map;
+        }
+
+        // OIBoneInfo.group is a mask: limb bones carry Body plus their own limb bit,
+        // and FKCtrl.parts is what ActiveFK actually indexes, so the first matching
+        // part is the group the bone answers to.
+        private static int FkGroupIndex(SNeo.OIBoneInfo.BoneGroup group)
+        {
+            var parts = SNeo.FKCtrl.parts;
+            for (var i = 0; i < parts.Length; i++)
+                if ((group & parts[i]) != 0) return i;
+            return -1;
+        }
+
+        private static int IkGroupIndex(SNeo.OIBoneInfo.BoneGroup group)
+        {
+            for (var i = 0; i < KinematicGroups.Ik.Length; i++)
+                if (((int)group & (1 << i)) != 0) return i;
+            return -1;
+        }
+
+        // listIKTarget is filled in OICharInfo.IKTargetEN order by AddObjectAssist.
+        private static string IkTargetName(int index)
+        {
+            var names = Enum.GetNames(typeof(SNeo.OICharInfo.IKTargetEN));
+            return index >= 0 && index < names.Length ? Snake(names[index]) : "target_" + index;
+        }
+
+        private static int IkTargetIndex(string name)
+        {
+            var names = Enum.GetNames(typeof(SNeo.OICharInfo.IKTargetEN));
+            for (var i = 0; i < names.Length; i++)
+                if (Snake(names[i]) == name) return i;
+            return -1;
+        }
+
+        private static string Snake(string pascal)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (var i = 0; i < pascal.Length; i++)
+            {
+                if (char.IsUpper(pascal[i]) && sb.Length > 0) sb.Append('_');
+                sb.Append(char.ToLowerInvariant(pascal[i]));
+            }
+            return sb.ToString();
+        }
+
         private static SNeo.GuideCommand.EqualsInfo Equals(int key, Vector3 oldValue, Vector3 newValue) =>
             new SNeo.GuideCommand.EqualsInfo { dicKey = key, oldValue = oldValue, newValue = newValue };
 

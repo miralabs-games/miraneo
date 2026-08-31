@@ -37,12 +37,35 @@
         },
         "kinematic": {
           "type": ["object", "null"],
+          "description": "posing state; all fields round-trip into studio_set_character_kinematics",
           "properties": {
-            "mode": { "type": "string", "enum": ["none", "fk", "ik"] },
+            "mode": { "type": "string", "enum": ["none", "fk", "ik"], "description": "the chain currently driving the skeleton; FK and IK are mutually exclusive, 'none' means the animation drives it" },
             "ik": { "type": "boolean", "description": "IK enabled" },
             "fk": { "type": "boolean", "description": "FK enabled" },
-            "active_ik": { "type": "array", "items": { "type": "boolean" }, "description": "per IK bone group" },
-            "active_fk": { "type": "array", "items": { "type": "boolean" }, "description": "per FK bone group" }
+            "ik_groups": {
+              "type": "object",
+              "description": "per-limb IK switches; a group only has a visible effect while mode is 'ik'",
+              "properties": {
+                "body": { "type": "boolean" },
+                "right_leg": { "type": "boolean" },
+                "left_leg": { "type": "boolean" },
+                "right_arm": { "type": "boolean" },
+                "left_arm": { "type": "boolean" }
+              }
+            },
+            "fk_groups": {
+              "type": "object",
+              "description": "per-part FK switches; a group only has a visible effect while mode is 'fk'. 'body' covers the whole skeleton except the parts listed separately (arms and legs are body bones)",
+              "properties": {
+                "hair": { "type": "boolean" },
+                "neck": { "type": "boolean" },
+                "breast": { "type": "boolean" },
+                "body": { "type": "boolean" },
+                "right_hand": { "type": "boolean" },
+                "left_hand": { "type": "boolean" },
+                "skirt": { "type": "boolean" }
+              }
+            }
           }
         },
         "face": {

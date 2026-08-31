@@ -84,6 +84,26 @@ namespace MiraStudio.Core
             .Add("count", Count);
     }
 
+    // Group names for the two kinematic chains, in the exact order Studio indexes
+    // them: activeIK by bit position of OIBoneInfo.BoneGroup, activeFK by FKCtrl.parts.
+    public static class KinematicGroups
+    {
+        public static readonly string[] Ik = { "body", "right_leg", "left_leg", "right_arm", "left_arm" };
+        public static readonly string[] Fk = { "hair", "neck", "breast", "body", "right_hand", "left_hand", "skirt" };
+
+        public static int Index(string[] names, string name)
+        {
+            for (var i = 0; i < names.Length; i++)
+                if (names[i] == name) return i;
+            return -1;
+        }
+
+        public static string Join(string[] names)
+        {
+            return string.Join(", ", names);
+        }
+    }
+
     public sealed class KinematicDto
     {
         public string Mode;
@@ -94,8 +114,16 @@ namespace MiraStudio.Core
             .Add("mode", Mode)
             .Add("ik", Ik)
             .Add("fk", Fk)
-            .Add("active_ik", Bools(ActiveIk))
-            .Add("active_fk", Bools(ActiveFk));
+            .Add("ik_groups", Named(KinematicGroups.Ik, ActiveIk))
+            .Add("fk_groups", Named(KinematicGroups.Fk, ActiveFk));
+
+        private static JsonNode Named(string[] names, bool[] values)
+        {
+            if (values == null) return JsonNull.Instance;
+            var obj = new JsonObject();
+            for (var i = 0; i < names.Length && i < values.Length; i++) obj.Add(names[i], values[i]);
+            return obj;
+        }
 
         internal static JsonArray Bools(bool[] values)
         {
@@ -103,6 +131,63 @@ namespace MiraStudio.Core
             if (values != null)
                 foreach (var v in values) arr.Add(v);
             return arr;
+        }
+    }
+
+    public sealed class BoneDto
+    {
+        public int Id, Level;
+        public string Bone, Label, Group;
+        public bool Weighted;
+        public Vec3 Rot;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("id", Id)
+            .Add("bone", Bone)
+            .Add("label", Label)
+            .Add("group", Group)
+            .Add("level", Level)
+            .Add("weighted", Weighted)
+            .Add("rot", Rot.ToJson());
+    }
+
+    public sealed class IkTargetDto
+    {
+        public int Id;
+        public string Target, Group, Bone;
+        public bool Rotatable;
+        public Vec3 Pos, Rot;
+
+        public JsonNode ToJson() => new JsonObject()
+            .Add("id", Id)
+            .Add("target", Target)
+            .Add("group", Group)
+            .Add("bone", Bone)
+            .Add("rotatable", Rotatable)
+            .Add("pos", Pos.ToJson())
+            .Add("rot", Rot.ToJson());
+    }
+
+    public sealed class SkeletonDto
+    {
+        public int CharacterId;
+        public string Mode;
+        public System.Collections.Generic.List<BoneDto> Bones;
+        public System.Collections.Generic.List<IkTargetDto> IkTargets;
+
+        public JsonNode ToJson()
+        {
+            var bones = new JsonArray();
+            if (Bones != null)
+                foreach (var b in Bones) bones.Add(b.ToJson());
+            var targets = new JsonArray();
+            if (IkTargets != null)
+                foreach (var t in IkTargets) targets.Add(t.ToJson());
+            return new JsonObject()
+                .Add("character_id", CharacterId)
+                .Add("mode", Mode)
+                .Add("bones", bones)
+                .Add("ik_targets", targets);
         }
     }
 
@@ -340,6 +425,30 @@ namespace MiraStudio.Core
         public bool IsEmpty =>
             !HasClip && !NormalizedTime.HasValue && !Speed.HasValue && !Pattern.HasValue &&
             !OptionParam1.HasValue && !OptionParam2.HasValue;
+    }
+
+    // Mode and group flags are independent: a group patch stores its flags whatever
+    // the mode is, and only takes visible effect while its chain is enabled.
+    public sealed class KinematicsPatch
+    {
+        public string Mode, Reflect;
+        public bool?[] Fk, Ik;
+
+        public bool IsEmpty => Mode == null && Reflect == null && !Any(Fk) && !Any(Ik);
+
+        private static bool Any(bool?[] values)
+        {
+            if (values == null) return false;
+            foreach (var v in values)
+                if (v.HasValue) return true;
+            return false;
+        }
+    }
+
+    public sealed class IkTargetPatch
+    {
+        public string Target;
+        public Vec3? Pos, Rot;
     }
 
     public sealed class ExpressionPatch

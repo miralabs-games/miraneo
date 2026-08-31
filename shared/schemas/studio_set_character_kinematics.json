@@ -1,0 +1,48 @@
+{
+  "description": "Switch a character between animation, FK and IK posing, and turn individual bone groups on or off. This is the gate for studio_set_character_bone (needs mode 'fk') and studio_set_character_ik (needs mode 'ik') — both refuse to write while their chain is off, because Studio would store the value and never apply it. FK and IK are mutually exclusive: enabling one disables the other. Group flags are remembered per character and are stored even while their chain is off, so setting 'fk' groups while mode is 'ik' changes nothing visible until you switch. Use 'reflect' to capture the pose the character is showing right now (typically the animation) into the change amounts, so enabling a chain does not snap the character back to an older pose. Not undoable from Studio (its own FK/IK toggles are not either), but it leaves the undo stack intact.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "mode": {
+        "type": "string",
+        "enum": ["fk", "ik", "none"],
+        "description": "'fk' rotates bones directly, 'ik' drags hand/foot targets and solves the limbs, 'none' hands the skeleton back to the animation"
+      },
+      "fk": {
+        "type": "object",
+        "description": "FK group switches; omitted groups keep their current flag. 'body' is the whole skeleton minus the parts listed separately — arms, legs and spine are all body bones. Defaults on a fresh character: neck and body on, the rest off",
+        "properties": {
+          "hair": { "type": "boolean" },
+          "neck": { "type": "boolean", "description": "head and neck; turning it on forces the neck look pattern to manual" },
+          "breast": { "type": "boolean", "description": "turning it on disables the breast dynamic bones" },
+          "body": { "type": "boolean", "description": "spine, hips, arms, legs, feet" },
+          "right_hand": { "type": "boolean", "description": "right hand fingers" },
+          "left_hand": { "type": "boolean", "description": "left hand fingers" },
+          "skirt": { "type": "boolean", "description": "turning it on disables the skirt dynamic bones" }
+        },
+        "additionalProperties": false
+      },
+      "ik": {
+        "type": "object",
+        "description": "IK group switches; omitted groups keep their current flag. All five default to on",
+        "properties": {
+          "body": { "type": "boolean" },
+          "right_leg": { "type": "boolean" },
+          "left_leg": { "type": "boolean" },
+          "right_arm": { "type": "boolean" },
+          "left_arm": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "reflect": {
+        "type": "string",
+        "enum": ["fk", "ik", "both"],
+        "description": "capture the skeleton as it currently stands into the FK bone rotations and/or the IK target positions, one frame after this call and **before** 'mode' is applied — that ordering is what makes 'mode': 'fk' with 'reflect': 'fk' freeze the running animation instead of snapping to the last stored pose. Capturing into a chain that is already enabled is a no-op, since that chain is what is driving the bones. FK capture covers body, neck and both hands only (hair, breast and skirt are driven by dynamic bones); IK capture covers all five groups. The capture itself is not undoable"
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "output": { "type": "object", "description": "the character, same shape as one entry of studio_list_characters — read back 'kinematic' to confirm" }
+}

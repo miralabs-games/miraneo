@@ -19,6 +19,7 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_list_character_cards` | Character cards under `UserData/chara/{female,male}` | paths feed `studio_create_character`; first call reads every card, then cached |
 | `studio_list_poses` | Pose files under `UserData/studio/pose` | paths feed `studio_set_character_pose`; each pose is sex-specific |
 | `studio_list_attach_points` | A character's 54 bone anchors: index, name, `available`, ids already attached | **required** before `studio_attach_object`: only `available` points can be used |
+| `studio_list_bones` | A character's posable skeleton: every FK bone (name, group, `weighted`, rot) and the 13 IK targets (name, group, `rotatable`, pos/rot) | **required** before posing: the bone set depends on the rig, hair and clothes |
 
 ### Write
 
@@ -37,6 +38,9 @@ Input/output contracts live in [shared/schemas/](../shared/schemas/) — one JSO
 | `studio_set_character_anime` | Base animation `(group, category, no[, normalized_time])` and/or playback: `speed`, `pattern`, `option_param1|2` | ids from `studio_search_catalog` with `catalog='anime'`; the playback fields are undoable |
 | `studio_set_character_expression` | Face: eyebrows/eyes/mouth patterns, openings, blink, tears, blush, look-at, expression categories | partial + absolute |
 | `studio_set_character_hands` | Hand shapes, `left` and `right` independently | partial + absolute; `0` disables the shape, `1..hands.count` selects one |
+| `studio_set_character_kinematics` | Switch posing mode (`fk`/`ik`/`none`), toggle bone groups, and `reflect` the live pose into the change amounts | gates the two tools below; not undoable but leaves the stack intact |
+| `studio_set_character_bone` | Rotate FK bones, several at a time | absolute euler degrees; one call = one undo step |
+| `studio_set_character_ik` | Move (and rotate, on hands and feet) IK targets, several at a time | absolute offsets; one call = one undo step |
 | `studio_attach_object` | Attach an object to a character bone, an item or a folder — or detach it | omit `parent_id` to detach; **not** undoable and clears the undo stack |
 
 Every write tool takes **absolute** values and applies only the fields present, so repeating a call is idempotent. Item/light creation, transform edits and the anime playback settings are pushed onto Studio's native `UndoRedoManager`, so they can be undone from the Studio UI; deletion and character creation cannot (Studio NEO V2 has neither a delete command nor an add-character command, and clears the stack itself on the latter). The remaining character writes — pose, clip load, face, hands — have no command in Studio either, but unlike deletion they leave the stack usable, so they do not clear it.
@@ -52,6 +56,12 @@ Attach points are the same 54 anchors for every character, but the bone behind o
 **Anime playback.** `speed`, `pattern` and `option_param1|2` adjust the clip that is already loaded and can be sent without `(group, category, no)`. `pattern` and the option params reach the animator only for clips that declare them — `anime.is_anime_motion` and `anime.is_h_anime` say whether they will, and otherwise the value is stored but changes nothing. The ranges are Studio's own panel clamps (`speed` 0..3, the rest 0..1) so that a saved scene stays reproducible from the UI.
 
 **Eye and eyebrow patterns are list positions, not asset ids.** Studio's own face panel shows the index inside the character's per-sex pattern list and maps it through the key array, because mods add non-contiguous ids. `studio_set_character_expression` uses that same index space; read `face.eyebrows_count` / `face.eyes_count` from `studio_list_characters` for the valid range.
+
+**Posing: mode first, then bones.** FK and IK are mutually exclusive chains and both are off on a fresh character — the animation drives the skeleton. `studio_set_character_bone` and `studio_set_character_ik` refuse to write while their chain is off, because Studio would happily store the value and never apply it: `ActiveFK` only reaches the bones when `enableFK` is already true, and `FKCtrl` only writes a bone while `enable & boneWeight`. The same silent no-op exists one level down, per group and per bone, so both tools also refuse a bone whose FK group is off, an IK target whose group is off, and an unweighted bone (the normal state of the 48 skirt bones when no skirt is worn — `weighted: false` in `studio_list_bones`). Group flags themselves are stored regardless of the mode, so pre-configuring `fk` groups while in IK is allowed and simply invisible until the switch.
+
+Bone names are the rig's own transform names (`cf_J_ArmUp00_L`, `cf_J_Hand_Thumb01_R`) and are unique per character; the `label` field is Studio's Japanese caption and is shared by several bones, so it is display-only. The FK `body` group covers the whole skeleton except the parts listed separately — arms, legs and spine are all body bones, because Studio stores a bone's group as a mask where every limb also carries the `Body` bit. Bones rotate only (Studio gives their guides no position or scale handle); IK targets move, and only the four hand and foot targets also rotate. Both tools take a map of several entries and push a single `GuideCommand` for the batch, so an agent's edit is one undo step in the Studio UI.
+
+**`reflect` captures the pose the character is actually showing.** Enabling FK or IK snaps the skeleton to whatever change amounts were last stored, which after an animation change is stale. `reflect: "fk" | "ik" | "both"` copies the live skeleton into those change amounts one frame after the call and **before** `mode` is applied — that ordering is the whole point: `{"mode": "fk", "reflect": "fk"}` freezes the running animation instead of jumping back to an older pose. The wait is required because the values only become correct once the Animator has written the frame, which is why Studio defers its own reflect buttons by one `LateUpdate`. Capturing into a chain that is already enabled is a no-op, since that chain is what is driving the bones. FK capture covers body, neck and both hands (hair, breast and skirt are driven by dynamic bones); IK capture covers all five groups. The capture itself is not undoable.
 
 **Scene scale is not fixed.** Studio scenes are frequently built at a scale other than 1 unit = 1 m — a real user scene tested here has a ~15-unit-tall character. Read an object's `transform` before choosing camera distances or light ranges instead of assuming metres.
 
@@ -79,4 +89,4 @@ cd mcp && bun run smoke
 
 ## Planned next
 
-`studio_set_character_kinematics` (`ActiveKinematicMode` / `ActiveIK` / `ActiveFK` + per-bone targets, plus a bone-discovery tool), `execute_batch`.
+`execute_batch`. Left aside for now: clothes (sibling slots are coupled, top↔bottom and inner_t↔inner_b) and `siru` (read-back is a frame late, and a state above 2 throws inside `Manager.Character.Update` later).

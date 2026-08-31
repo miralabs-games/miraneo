@@ -1,0 +1,26 @@
+{
+  "description": "Rotate FK bones on a character — the direct way to build or adjust a pose. Values are absolute local euler angles in degrees, so repeating a call is idempotent; read the current ones from studio_list_bones. Pass as many bones as you like in one call: they become a single undo step in Studio. Requires mode 'fk' (studio_set_character_kinematics) and the bone's FK group to be on, and the bone to be weighted — the call refuses rather than storing a rotation Studio would never apply. Bones rotate only; use studio_set_character_ik to move things in space.",
+  "input": {
+    "type": "object",
+    "properties": {
+      "id": { "type": "integer", "description": "character id from studio_list_characters" },
+      "bones": {
+        "type": "object",
+        "description": "one entry per bone: the bone name from studio_list_bones mapped to absolute local euler angles [x, y, z] in degrees",
+        "additionalProperties": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "minProperties": 1
+      }
+    },
+    "required": ["id", "bones"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "description": "same shape as studio_list_bones, restricted to the bones this call touched ('ik_targets' is empty)"
+  }
+}
