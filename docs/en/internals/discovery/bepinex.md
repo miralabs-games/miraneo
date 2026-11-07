@@ -1,8 +1,12 @@
-# BepInEx Inventory — HS2 DX BetterRepack R16
+# BepInEx — loader, config and plugin inventory of HS2 DX BetterRepack R16
 
-Game root: `D:\[ScrewThisNoise] HoneySelect 2 DX BetterRepack R16(1)`
+The BepInEx version and folders, the key `BepInEx.cfg` settings, the shipped config files and every plugin DLL of the install.
 
-## 1. Core versions (`BepInEx\core`)
+Game root: `<game>`.
+
+## Core versions
+
+`BepInEx\core`:
 
 | DLL | FileVersion | ProductVersion |
 |---|---|---|
@@ -10,16 +14,37 @@ Game root: `D:\[ScrewThisNoise] HoneySelect 2 DX BetterRepack R16(1)`
 | BepInEx.Preloader.dll | 5.4.23.2 | 5.4.23.2 |
 | 0Harmony.dll | 2.9.0.0 | 2.9.0 |
 
-=> **BepInEx 5.4.23.2**, **HarmonyX 2.9.0**.
+The install runs **BepInEx 5.4.23.2** with **HarmonyX 2.9.0**.
 
 Full contents of `BepInEx\core`:
-0Harmony.dll, 0Harmony.xml, 0Harmony20.dll, BepInEx.dll, BepInEx.Harmony.dll, BepInEx.Harmony.xml, BepInEx.Preloader.dll, BepInEx.Preloader.xml, BepInEx.xml, HarmonyXInterop.dll, Mono.Cecil.dll, Mono.Cecil.Mdb.dll, Mono.Cecil.Pdb.dll, Mono.Cecil.Rocks.dll, MonoMod.RuntimeDetour.dll (+xml), MonoMod.Utils.dll (+xml), XUnity.Common.dll
 
-## 2. BepInEx top-level folders
+```text
+0Harmony.dll
+0Harmony.xml
+0Harmony20.dll
+BepInEx.dll
+BepInEx.Harmony.dll
+BepInEx.Harmony.xml
+BepInEx.Preloader.dll
+BepInEx.Preloader.xml
+BepInEx.xml
+HarmonyXInterop.dll
+Mono.Cecil.dll
+Mono.Cecil.Mdb.dll
+Mono.Cecil.Pdb.dll
+Mono.Cecil.Rocks.dll
+MonoMod.RuntimeDetour.dll (+xml)
+MonoMod.Utils.dll (+xml)
+XUnity.Common.dll
+```
 
-BRInfo, cache, config, core, LauncherEN, patchers, **Plugins** (capital P), Translation
+## Folders
 
-### `BepInEx\patchers` (recursive)
+Top-level folders of `BepInEx`: `BRInfo`, `cache`, `config`, `core`, `LauncherEN`, `patchers`, **`Plugins`** (capital P; Windows is case-insensitive, so `BepInEx\plugins` resolves too), `Translation`.
+
+### Patchers
+
+`BepInEx\patchers`, recursive:
 
 | Path | FileVersion |
 |---|---|
@@ -30,34 +55,138 @@ BRInfo, cache, config, core, LauncherEN, patchers, **Plugins** (capital P), Tran
 | BepInEx.SplashScreen\BepInEx.SplashScreen.Patcher.BepInEx5.dll | 2.2.0.0 |
 | BepInEx.SplashScreen\BepInEx.SplashScreen.Patcher.dll | 1.0.0.0 |
 
-## 3. `BepInEx\config\BepInEx.cfg` — key settings
+## `BepInEx.cfg` key settings
 
-- **Entrypoint**: Assembly = `UnityEngine.CoreModule.dll`, Type = `Application`, Method = `.cctor` (defaults)
-- **Console**: `[Logging.Console] Enabled = false` (LogLevels = Fatal, Error, Warning, Message, Info; DisplayedLogLevel = Info; UTF-8; StandardOutType = Auto)
-- **Disk log**: `[Logging.Disk] Enabled = false` (!) — LogDisk disabled; WriteUnityLog = false; AppendLog = false
-- UnityLogListening = true; PreloaderConsoleOutRedirection = true
-- Harmony log channels: Warn, Error (HarmonyX: Warn/Error true, IL/Info false)
-- Preloader: ApplyRuntimePatches = true, HarmonyBackend = auto, DumpAssemblies = false, ShimHarmonySupport = false
-- Caching: EnableAssemblyCache = true
-- Chainloader: HideManagerGameObject = false
-- SplashScreen: Enabled = true, OnlyNoConsole = true
+`BepInEx\config\BepInEx.cfg`:
 
-Note for MiraStudio: both console and disk logging are disabled out of the box; the plugin should either rely on its own log sink or the config should be adjusted.
+| Area | Settings |
+|---|---|
+| Entrypoint | Assembly = `UnityEngine.CoreModule.dll`, Type = `Application`, Method = `.cctor` (defaults) |
+| Console | `[Logging.Console] Enabled = false`; LogLevels = Fatal, Error, Warning, Message, Info; DisplayedLogLevel = Info; UTF-8; StandardOutType = Auto |
+| Disk log | `[Logging.Disk] Enabled = false` (log to disk disabled); WriteUnityLog = false; AppendLog = false |
+| Unity log | UnityLogListening = true; PreloaderConsoleOutRedirection = true |
+| Harmony log | channels Warn, Error (HarmonyX: Warn/Error true, IL/Info false) |
+| Preloader | ApplyRuntimePatches = true, HarmonyBackend = auto, DumpAssemblies = false, ShimHarmonySupport = false |
+| Caching | EnableAssemblyCache = true |
+| Chainloader | HideManagerGameObject = false |
+| SplashScreen | Enabled = true, OnlyNoConsole = true |
 
-### Other files in `BepInEx\config` (~100 .cfg/.ini)
+For MiraStudio: console and disk logging are both disabled out of the box. The plugin has to rely on its own log sink, or the config has to be adjusted.
 
-animal42069.HS2betterpenetration.cfg, Autostart.cfg, AutoTranslatorConfig.ini, BepInEx.cfg, BepInEx.EnableResize.cfg, BepInEx.MuteInBackground.cfg, Bulge.cfg, certain.lsp.togglefkik.cfg, com.2155x.fairbair.hs2_povx.cfg, com.bepis.bepinex.configurationmanager.cfg, com.bepis.bepinex.screenshotmanager.cfg, com.bepis.bepinex.sideloader.cfg, com.bepis.bepinex.sliderunlocker.cfg, com.bepis.messagecenter.cfg, com.deathweasel.bepinex.animationcontroller.cfg, com.deathweasel.bepinex.autosave.cfg, com.deathweasel.bepinex.characterexport.cfg, com.deathweasel.bepinex.colliders.cfg, com.deathweasel.bepinex.demosaic.cfg, com.deathweasel.bepinex.makerdefaults.cfg, com.deathweasel.bepinex.materialeditor.cfg, com.deathweasel.bepinex.posefolders.cfg, com.deathweasel.bepinex.posequickload.cfg, com.deathweasel.bepinex.studiocustommasking.cfg, com.deathweasel.bepinex.studioimageembed.cfg, com.deathweasel.bepinex.studioobjectmovehotkeys.cfg, com.deathweasel.bepinex.studiosceneloadedsound.cfg, com.deathweasel.bepinex.subtitles.cfg, com.deathweasel.bepinex.textresourceredirector.cfg, com.deathweasel.bepinex.uncensorselector.cfg, com.gebo.BepInEx.GameWhoIsThere.cfg, com.gebo.BepInEx.GeBoAPI.cfg, com.gebo.BepInEx.StudioMultiSelectChara.cfg, com.gebo.BepInEx.StudioSceneInitialCamera.cfg, com.gebo.BepInEx.StudioSceneNavigation.cfg, com.gebo.BepInEx.TranslationCacheCleaner.cfg, com.gebo.BepInEx.TranslationHelper.cfg, com.hooh.hs2.heelz.cfg, com.joan6694.illusionplugins.hs2us.cfg, com.joan6694.illusionplugins.nodesconstraints.cfg, com.joan6694.illusionplugins.poseeditor.cfg, com.joan6694.illusionplugins.timeline.cfg, com.joan6694.illusionplugins.videoexport.cfg, com.rikkibalboa.bepinex.projectorutils.cfg, com.rskoi.particleeditor.cfg, com.toppac.PoseLoader.cfg, com.yy.poop.cfg, Countd360.StudioCharaEditor.HS2.cfg, CultureFix.cfg, GarryWu.HS2WearCustom.cfg, gravydevsupreme.xunity.resourceredirector.cfg, HeightBar.cfg, HS2_BetterHScenes.cfg, HS2_ExtraGroups.cfg, HS2_Fix_MakerOptimizations.cfg, HS2_Fix_ResourceUnloadOptimizations.cfg, HS2_HLightControl.cfg, HS2_MakerSearch.cfg, HS2_QuickAccessBox.cfg, HS2_StudioPOV.cfg, HS2_UnlockPlayerHeight.cfg, IllusionMods.CharacterReplacer.cfg, keelhauled.defaultstudioscene.cfg, keelhauled.draganddrop.cfg, keelhauled.graphicssettings.cfg, keelhauled.hideallui.cfg, keelhauled.itemlayeredit.cfg, keelhauled.titleshortcuts.cfg, KK_PregnancyPlus.cfg, KKABMX.Core.cfg, kky.aihs2.studiocharasort.cfg, kky.bepinex.plugins.colorpanelx.cfg, kky.hs2.StudioTransformOrientation.cfg, kky.hs2.StudioVoiceX.cfg, KSOX_GUI.cfg, KSOX.cfg, MarC0.FPSCounter.cfg, marco.authordata.cfg, marco.FolderBrowser.cfg, marco.kkapi.cfg, mikke.gravureAI.cfg, orange.spork.additionalaccessorycontrolsplugin.cfg, orange.spork.advikplugin.cfg, orange.spork.chainlighting.cfg, orange.spork.characterrandomizer.cfg, orange.spork.eyelookadjuster.cfg, orange.spork.fkheightadjustuiplugin.cfg, orange.spork.hs2chicksdigmapmoddersplugin.cfg, orange.spork.hs2takechargeplugin.cfg, orange.spork.makersorticonreplacer.cfg, orange.spork.moarcamzplugin.cfg, orange.spork.studiocharmon.cfg, RendererEditor.cfg, RuntimeUnityEditor.cfg, sakacheggs.measurements.cfg, spockbauru.hs2.girlsentrance.cfg, StudioCameraTweaks.cfg, StudioExtraMoveAxis.cfg, StudioWindowResize.cfg
+## Other config files
 
-## 4. All plugin DLLs (`BepInEx\Plugins`, recursive, 192 DLLs)
+About 100 `.cfg` / `.ini` files sit in `BepInEx\config`:
 
-Relative path | FileVersion — appended below in section 6.
+```text
+animal42069.HS2betterpenetration.cfg
+Autostart.cfg
+AutoTranslatorConfig.ini
+BepInEx.cfg
+BepInEx.EnableResize.cfg
+BepInEx.MuteInBackground.cfg
+Bulge.cfg
+certain.lsp.togglefkik.cfg
+com.2155x.fairbair.hs2_povx.cfg
+com.bepis.bepinex.configurationmanager.cfg
+com.bepis.bepinex.screenshotmanager.cfg
+com.bepis.bepinex.sideloader.cfg
+com.bepis.bepinex.sliderunlocker.cfg
+com.bepis.messagecenter.cfg
+com.deathweasel.bepinex.animationcontroller.cfg
+com.deathweasel.bepinex.autosave.cfg
+com.deathweasel.bepinex.characterexport.cfg
+com.deathweasel.bepinex.colliders.cfg
+com.deathweasel.bepinex.demosaic.cfg
+com.deathweasel.bepinex.makerdefaults.cfg
+com.deathweasel.bepinex.materialeditor.cfg
+com.deathweasel.bepinex.posefolders.cfg
+com.deathweasel.bepinex.posequickload.cfg
+com.deathweasel.bepinex.studiocustommasking.cfg
+com.deathweasel.bepinex.studioimageembed.cfg
+com.deathweasel.bepinex.studioobjectmovehotkeys.cfg
+com.deathweasel.bepinex.studiosceneloadedsound.cfg
+com.deathweasel.bepinex.subtitles.cfg
+com.deathweasel.bepinex.textresourceredirector.cfg
+com.deathweasel.bepinex.uncensorselector.cfg
+com.gebo.BepInEx.GameWhoIsThere.cfg
+com.gebo.BepInEx.GeBoAPI.cfg
+com.gebo.BepInEx.StudioMultiSelectChara.cfg
+com.gebo.BepInEx.StudioSceneInitialCamera.cfg
+com.gebo.BepInEx.StudioSceneNavigation.cfg
+com.gebo.BepInEx.TranslationCacheCleaner.cfg
+com.gebo.BepInEx.TranslationHelper.cfg
+com.hooh.hs2.heelz.cfg
+com.joan6694.illusionplugins.hs2us.cfg
+com.joan6694.illusionplugins.nodesconstraints.cfg
+com.joan6694.illusionplugins.poseeditor.cfg
+com.joan6694.illusionplugins.timeline.cfg
+com.joan6694.illusionplugins.videoexport.cfg
+com.rikkibalboa.bepinex.projectorutils.cfg
+com.rskoi.particleeditor.cfg
+com.toppac.PoseLoader.cfg
+com.yy.poop.cfg
+Countd360.StudioCharaEditor.HS2.cfg
+CultureFix.cfg
+GarryWu.HS2WearCustom.cfg
+gravydevsupreme.xunity.resourceredirector.cfg
+HeightBar.cfg
+HS2_BetterHScenes.cfg
+HS2_ExtraGroups.cfg
+HS2_Fix_MakerOptimizations.cfg
+HS2_Fix_ResourceUnloadOptimizations.cfg
+HS2_HLightControl.cfg
+HS2_MakerSearch.cfg
+HS2_QuickAccessBox.cfg
+HS2_StudioPOV.cfg
+HS2_UnlockPlayerHeight.cfg
+IllusionMods.CharacterReplacer.cfg
+keelhauled.defaultstudioscene.cfg
+keelhauled.draganddrop.cfg
+keelhauled.graphicssettings.cfg
+keelhauled.hideallui.cfg
+keelhauled.itemlayeredit.cfg
+keelhauled.titleshortcuts.cfg
+KK_PregnancyPlus.cfg
+KKABMX.Core.cfg
+kky.aihs2.studiocharasort.cfg
+kky.bepinex.plugins.colorpanelx.cfg
+kky.hs2.StudioTransformOrientation.cfg
+kky.hs2.StudioVoiceX.cfg
+KSOX_GUI.cfg
+KSOX.cfg
+MarC0.FPSCounter.cfg
+marco.authordata.cfg
+marco.FolderBrowser.cfg
+marco.kkapi.cfg
+mikke.gravureAI.cfg
+orange.spork.additionalaccessorycontrolsplugin.cfg
+orange.spork.advikplugin.cfg
+orange.spork.chainlighting.cfg
+orange.spork.characterrandomizer.cfg
+orange.spork.eyelookadjuster.cfg
+orange.spork.fkheightadjustuiplugin.cfg
+orange.spork.hs2chicksdigmapmoddersplugin.cfg
+orange.spork.hs2takechargeplugin.cfg
+orange.spork.makersorticonreplacer.cfg
+orange.spork.moarcamzplugin.cfg
+orange.spork.studiocharmon.cfg
+RendererEditor.cfg
+RuntimeUnityEditor.cfg
+sakacheggs.measurements.cfg
+spockbauru.hs2.girlsentrance.cfg
+StudioCameraTweaks.cfg
+StudioExtraMoveAxis.cfg
+StudioWindowResize.cfg
+```
 
-## 5. Miscellaneous
+## Miscellaneous
 
-- **BepInEx_Shim_Backup** (top level): contains a single `BepInEx` folder — a backup of the pre-shim layout: `core\BepInEx.Harmony.dll` (2.0.0.0) plus a `plugins` tree with older copies of ~30 plugin DLLs (2155X and HS2_Plugins subfolders included).
-- **scripts** (game root, top level): `AYAYA_v2.cs` and `scriptignores` — consumed by **ScriptLoader.dll** (present in Plugins), which compiles/loads C# scripts at runtime.
+- **`BepInEx_Shim_Backup`** (top level): holds a single `BepInEx` folder, a backup of the pre-shim layout. It contains `core\BepInEx.Harmony.dll` (2.0.0.0) and a `plugins` tree with older copies of about 30 plugin DLLs (the `2155X` and `HS2_Plugins` subfolders included).
+- **`scripts`** (game root, top level): `AYAYA_v2.cs` and `scriptignores`, consumed by `ScriptLoader.dll` (present in `Plugins`), which compiles and loads C# scripts at runtime.
 
-## 6. Plugin DLL table
+## Plugin DLLs
+
+All 192 DLLs under `BepInEx\Plugins`, recursive, with their FileVersion. Paths are relative to `BepInEx\Plugins`.
 
 | Relative path | FileVersion |
 |---|---|
@@ -254,3 +383,8 @@ Relative path | FileVersion — appended below in section 6.
 | XUnity.ResourceRedirector\XUnity.ResourceRedirector.BepInEx.dll | 2.1.0.0 |
 | XUnity.ResourceRedirector\XUnity.ResourceRedirector.dll | 2.1.0.0 |
 
+## See also
+
+- [Modding APIs](modding-apis.md)
+- [Runtime](runtime.md)
+- [Assemblies](assemblies.md)

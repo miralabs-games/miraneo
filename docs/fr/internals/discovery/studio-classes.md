@@ -1,12 +1,20 @@
-# Studio NEO V2 — Assembly-CSharp.dll class surface (metadata dump)
+# Studio Classes — surface de classes d'Assembly-CSharp.dll
 
-Source: `D:\[ScrewThisNoise] HoneySelect 2 DX BetterRepack R16(1)\StudioNEOV2_Data\Managed\Assembly-CSharp.dll`
-Dump date: 2026-08-30. Pure metadata read (System.Reflection.Metadata), no code executed.
-Total TypeDefinitions in assembly: 4660
+Les types d'`Assembly-CSharp.dll` qui comptent pour Studio NEO V2 : l'espace de noms `Studio`, les dumps de membres des classes clés, les contrôleurs de cinématique et de regard du cou, l'API de personnage, et le rôle probable de chaque classe clé.
 
-## 1. All types in namespace `Studio` (184 top-level)
+Source : `<game>\StudioNEOV2_Data\Managed\Assembly-CSharp.dll`. Date du dump : 2026-08-30. Le dump est une pure lecture de métadonnées (`System.Reflection.Metadata`) ; aucun code n'a été exécuté. Total de TypeDefinitions dans l'assembly : 4660.
 
-| Type | Methods | Fields |
+Lire les listings :
+
+- `(xN)` après un nom de membre indique N surcharges de ce nom.
+- `<name>k__BackingField` est le champ de support d'une propriété automatique.
+- `<>c`, `<>c__DisplayClassN_M` et `<Name>d__N` sont des types générés par le compilateur (caches de lambdas, fermetures, machines à états d'itérateurs).
+
+## Types de l'espace de noms `Studio`
+
+184 types de premier niveau, avec leurs nombres de méthodes et de champs.
+
+| Type | Méthodes | Champs |
 |---|---|---|
 | AddButtonCtrl | 3 | 3 |
 | AddObjectAssist | 19 | 0 |
@@ -193,9 +201,11 @@ Total TypeDefinitions in assembly: 4660
 | WorkspaceCtrl | 19 | 12 |
 | YureCtrl | 15 | 9 |
 
-### Nested types under Studio namespace types (459)
+### Types imbriqués
 
-```
+459 types imbriqués sous les types de l'espace de noms `Studio`.
+
+```text
 Studio.AddButtonCtrl+CommonInfo
 Studio.AddObjectAssist+<>c
 Studio.AddObjectCamera+<>c__DisplayClass4_0
@@ -657,11 +667,13 @@ Studio.YureCtrl+BreastShapeInfo
 Studio.YureCtrl+Info
 ```
 
-## 2. Key class member dumps
+## Dumps des membres des classes clés
 
-### Existence check
+### Vérification d'existence
 
-| Requested name | Found as |
+Les noms demandés, et où chacun se trouve.
+
+| Nom demandé | Trouvé comme |
 |---|---|
 | Studio | Studio.Studio |
 | SceneInfo | Studio.SceneInfo, PlayfulSystems.LoadingScreen.SceneInfo |
@@ -682,13 +694,13 @@ Studio.YureCtrl+Info
 | AddObjectMale | Studio.AddObjectMale |
 | AddObjectItem | Studio.AddObjectItem |
 | Info | Studio.Info, ADV.Info, Illusion.Component.UI.ColorPicker.Info |
-| LightCtrl | NOT FOUND (top-level) |
-| MoveAnimator | NOT FOUND (top-level) |
+| LightCtrl | INTROUVABLE (niveau racine) |
+| MoveAnimator | INTROUVABLE (niveau racine) |
 
-### Studio.Studio
+### `Studio.Studio`
 
-Methods (86):
-```
+**Méthodes (86)**
+```text
 .ctor
 AddCamera
 AddChangeAmount
@@ -775,8 +787,8 @@ UpdateCharaFKColor
 UpdateItemFKColor
 ```
 
-Fields (43):
-```
+**Champs (43)**
+```text
 savePath
 m_TreeNodeCtrl
 m_RootButtonCtrl
@@ -822,10 +834,10 @@ fdApplicationPath
 workInfo
 ```
 
-### Studio.SceneInfo
+### `Studio.SceneInfo`
 
-Methods (21):
-```
+**Méthodes (21)**
+```text
 .ctor
 CheckNewIndex
 DeleteIndex
@@ -846,8 +858,8 @@ set_dicImport
 SetNewIndex
 ```
 
-Fields (61):
-```
+**Champs (61)**
+```text
 m_Version
 dicObject
 mapInfo
@@ -911,10 +923,10 @@ lightCount
 <dataVersion>k__BackingField
 ```
 
-### Studio.CameraControl
+### `Studio.CameraControl`
 
-Methods (59):
-```
+**Méthodes (59)**
+```text
 .ctor
 Awake
 CloerListCollider
@@ -974,8 +986,8 @@ VanishProc
 VisibleFroceVanish (x2)
 ```
 
-Fields (40):
-```
+**Champs (40)**
+```text
 m_MapLayer
 <mainCmaera>k__BackingField
 transBase
@@ -1018,10 +1030,10 @@ lensSettings
 cameraState
 ```
 
-### Studio.CameraLightCtrl
+### `Studio.CameraLightCtrl`
 
-Methods (5):
-```
+**Méthodes (5)**
+```text
 .ctor
 Init
 OnEnable
@@ -1029,15 +1041,15 @@ Reflect
 Start
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 lightChara
 ```
 
-### Studio.ObjectCtrlInfo
+### `Studio.ObjectCtrlInfo`
 
-Methods (14):
-```
+**Méthodes (14)**
+```text
 .ctor
 get_animeSpeed
 get_Item
@@ -1054,8 +1066,8 @@ OnVisible
 set_animeSpeed
 ```
 
-Fields (5):
-```
+**Champs (5)**
+```text
 objectInfo
 treeNodeObject
 guideObject
@@ -1063,10 +1075,10 @@ parentInfo
 <animeSpeed>k__BackingField
 ```
 
-### Studio.OCIChar
+### `Studio.OCIChar`
 
-Methods (99):
-```
+**Méthodes (99)**
+```text
 .ctor
 <LoadAnime>b__107_0
 ActiveFK
@@ -1165,8 +1177,8 @@ VisibleFKGuide
 VisibleIKGuide
 ```
 
-Fields (24):
-```
+**Champs (24)**
+```text
 charReference
 dicAccessPoint
 listBones
@@ -1193,10 +1205,10 @@ _loadedAnimeInfo
 <preparation>k__BackingField
 ```
 
-### Studio.OCIItem
+### `Studio.OCIItem`
 
-Methods (64):
-```
+**Méthodes (64)**
+```text
 .ctor
 ActiveDynamicBone
 ActiveFK
@@ -1260,8 +1272,8 @@ UpdateFKColor
 UpdateOption
 ```
 
-Fields (16):
-```
+**Champs (16)**
+```text
 objectItem
 childRoot
 animator
@@ -1280,10 +1292,10 @@ arrayRender
 arrayParticle
 ```
 
-### Studio.OCILight
+### `Studio.OCILight`
 
-Methods (20):
-```
+**Méthodes (20)**
+```text
 .ctor
 get_light
 get_lightInfo
@@ -1306,18 +1318,18 @@ SetSpotAngle
 Update
 ```
 
-Fields (4):
-```
+**Champs (4)**
+```text
 objectLight
 m_Light
 lightTarget
 lightColor
 ```
 
-### Studio.OCIFolder
+### `Studio.OCIFolder`
 
-Methods (12):
-```
+**Méthodes (12)**
+```text
 .ctor
 get_folderInfo
 get_name
@@ -1332,16 +1344,16 @@ OnVisible
 set_name
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 objectItem
 childRoot
 ```
 
-### Studio.OCICamera
+### `Studio.OCICamera`
 
-Methods (15):
-```
+**Méthodes (15)**
+```text
 .ctor
 <SetActive>b__10_0
 <SetActive>b__10_1
@@ -1359,8 +1371,8 @@ set_name
 SetActive
 ```
 
-Fields (5):
-```
+**Champs (5)**
+```text
 objectItem
 meshRenderer
 disposable
@@ -1368,10 +1380,10 @@ visibleOutside
 cameraControl
 ```
 
-### Studio.OCIRoute
+### `Studio.OCIRoute`
 
-Methods (34):
-```
+**Méthodes (34)**
+```text
 .ctor
 <Play>b__40_0
 <Stop>b__43_0
@@ -1408,8 +1420,8 @@ UpdateLine
 UpdateNumber
 ```
 
-Fields (11):
-```
+**Champs (11)**
+```text
 limitNum
 objectItem
 childRoot
@@ -1423,10 +1435,10 @@ segments
 objLine
 ```
 
-### Studio.TreeNodeCtrl
+### `Studio.TreeNodeCtrl`
 
-Methods (31):
-```
+**Méthodes (31)**
+```text
 .ctor
 AddNode (x2)
 AddSelectNode
@@ -1456,8 +1468,8 @@ SetSelectNode
 Start
 ```
 
-Fields (12):
-```
+**Champs (12)**
+```text
 m_ObjectNode
 m_ObjectRoot
 m_TreeRoot
@@ -1472,10 +1484,10 @@ canvas
 scrollRect
 ```
 
-### Studio.GuideObject
+### `Studio.GuideObject`
 
-Methods (63):
-```
+**Méthodes (63)**
+```text
 .ctor
 <Awake>b__104_0
 <Awake>b__104_1
@@ -1540,8 +1552,8 @@ SetWorldPos
 Start
 ```
 
-Fields (24):
-```
+**Champs (24)**
+```text
 transformTarget
 m_DicKey
 m_ChangeAmount
@@ -1568,10 +1580,10 @@ nonconnect
 <isQuit>k__BackingField
 ```
 
-### Studio.AnimeControl
+### `Studio.AnimeControl`
 
-Methods (26):
-```
+**Méthodes (26)**
+```text
 .ctor
 AddEventTrigger
 Awake
@@ -1600,8 +1612,8 @@ UpdateInfo
 UpOptionParam
 ```
 
-Fields (19):
-```
+**Champs (19)**
+```text
 sliderSpeed
 eventSpeed
 inputSpeed
@@ -1623,10 +1635,10 @@ sex
 animeInfo
 ```
 
-### Studio.AddObjectAssist
+### `Studio.AddObjectAssist`
 
-Methods (19):
-```
+**Méthodes (19)**
+```text
 AddBoneGuide
 AddIKTarget (x3)
 ArrangeNames
@@ -1644,14 +1656,12 @@ TransformLoop
 UpdateState
 ```
 
-Fields (0):
-```
-```
+**Champs (0)** — aucun
 
-### Studio.AddObjectFemale
+### `Studio.AddObjectFemale`
 
-Methods (9):
-```
+**Méthodes (9)**
+```text
 Add (x2)
 AddCoroutine (x2)
 CheckNameLoop
@@ -1660,39 +1670,33 @@ GetSkirtDynamic (x2)
 Load
 ```
 
-Fields (0):
-```
-```
+**Champs (0)** — aucun
 
-### Studio.AddObjectMale
+### `Studio.AddObjectMale`
 
-Methods (3):
-```
+**Méthodes (3)**
+```text
 Add (x2)
 Load
 ```
 
-Fields (0):
-```
-```
+**Champs (0)** — aucun
 
-### Studio.AddObjectItem
+### `Studio.AddObjectItem`
 
-Methods (4):
-```
+**Méthodes (4)**
+```text
 Add
 GetLoadInfo
 Load (x2)
 ```
 
-Fields (0):
-```
-```
+**Champs (0)** — aucun
 
-### Studio.Info
+### `Studio.Info`
 
-Methods (53):
-```
+**Méthodes (53)**
+```text
 .ctor
 Awake
 CheckIsAdd
@@ -1741,8 +1745,8 @@ set_isLoadList
 SortDictionary
 ```
 
-Fields (23):
-```
+**Champs (23)**
+```text
 dicBoneInfo
 dicItemGroupCategory
 dicItemLoadInfo
@@ -1768,12 +1772,12 @@ waitTime
 <IsInstallAdd>k__BackingField
 ```
 
-### Studio.OCIChar nested types (18)
+### Types imbriqués de `Studio.OCIChar` (18)
 
-### Studio.OCIChar+SyncBoneInfo
+#### `Studio.OCIChar+SyncBoneInfo`
 
-Methods (6):
-```
+**Méthodes (6)**
+```text
 .ctor
 get_GameObject
 get_Transform
@@ -1782,16 +1786,16 @@ set_LocalRotation
 set_Rotation
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 <GameObject>k__BackingField
 _transform
 ```
 
-### Studio.OCIChar+BoneInfo
+#### `Studio.OCIChar+BoneInfo`
 
-Methods (20):
-```
+**Méthodes (20)**
+```text
 .ctor
 <AddSyncBone>b__35_0
 AddSyncBone
@@ -1814,8 +1818,8 @@ set_layer
 set_scaleRate
 ```
 
-Fields (6):
-```
+**Champs (6)**
+```text
 <guideObject>k__BackingField
 <boneInfo>k__BackingField
 m_GameObject
@@ -1824,10 +1828,10 @@ m_GameObject
 syncBoneInfo
 ```
 
-### Studio.OCIChar+IKInfo
+#### `Studio.OCIChar+IKInfo`
 
-Methods (21):
-```
+**Méthodes (21)**
+```text
 .ctor
 CopyBaseValue
 CopyBone
@@ -1851,8 +1855,8 @@ set_targetInfo
 set_targetObject
 ```
 
-Fields (6):
-```
+**Champs (6)**
+```text
 <guideObject>k__BackingField
 <targetInfo>k__BackingField
 <baseObject>k__BackingField
@@ -1861,10 +1865,10 @@ Fields (6):
 m_GameObject
 ```
 
-### Studio.OCIChar+LookAtInfo
+#### `Studio.OCIChar+LookAtInfo`
 
-Methods (10):
-```
+**Méthodes (10)**
+```text
 .ctor
 get_active
 get_gameObject
@@ -1877,125 +1881,125 @@ set_layer
 set_targetInfo
 ```
 
-Fields (3):
-```
+**Champs (3)**
+```text
 <guideObject>k__BackingField
 <targetInfo>k__BackingField
 m_GameObject
 ```
 
-### Studio.OCIChar+LoadedAnimeInfo
+#### `Studio.OCIChar+LoadedAnimeInfo`
 
-Methods (3):
-```
+**Méthodes (3)**
+```text
 .ctor
 BaseCheck
 OverrideCheck
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 baseFile
 overrideFile
 ```
 
-### Studio.OCIChar+AccessPointInfo
+#### `Studio.OCIChar+AccessPointInfo`
 
-Methods (1):
-```
+**Méthodes (1)**
+```text
 .ctor
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 root
 child
 ```
 
-### Studio.OCIChar+<>c__DisplayClass83_0
+#### `Studio.OCIChar+<>c__DisplayClass83_0`
 
-Methods (1):
-```
+**Méthodes (1)**
+```text
 .ctor
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 parts
 ```
 
-### Studio.OCIChar+<>c__DisplayClass83_1
+#### `Studio.OCIChar+<>c__DisplayClass83_1`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <ActiveFK>b__0
 ```
 
-Fields (3):
-```
+**Champs (3)**
+```text
 i
 CS$<>8__locals1
 <>9__0
 ```
 
-### Studio.OCIChar+<>c__DisplayClass84_0
+#### `Studio.OCIChar+<>c__DisplayClass84_0`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <IsFKGroup>b__0
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 _group
 ```
 
-### Studio.OCIChar+<>c__DisplayClass85_0
+#### `Studio.OCIChar+<>c__DisplayClass85_0`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <InitFKBone>b__0
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 _group
 <>9__0
 ```
 
-### Studio.OCIChar+<>c__DisplayClass86_0
+#### `Studio.OCIChar+<>c__DisplayClass86_0`
 
-Methods (1):
-```
+**Méthodes (1)**
+```text
 .ctor
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 _active
 ```
 
-### Studio.OCIChar+<>c__DisplayClass86_1
+#### `Studio.OCIChar+<>c__DisplayClass86_1`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <ActiveFKGroup>b__0
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 v
 CS$<>8__locals1
 ```
 
-### Studio.OCIChar+<>c
+#### `Studio.OCIChar+<>c`
 
-Methods (8):
-```
+**Méthodes (8)**
+```text
 .cctor
 .ctor
 <ActiveFKGroup>b__86_1
@@ -2006,8 +2010,8 @@ Methods (8):
 <ChangeChara>b__114_4
 ```
 
-Fields (7):
-```
+**Champs (7)**
+```text
 <>9
 <>9__86_1
 <>9__114_3
@@ -2017,84 +2021,86 @@ Fields (7):
 <>9__114_4
 ```
 
-### Studio.OCIChar+<>c__DisplayClass87_0
+#### `Studio.OCIChar+<>c__DisplayClass87_0`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <ActiveIK>b__0
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 target
 <>9__0
 ```
 
-### Studio.OCIChar+<>c__DisplayClass89_0
+#### `Studio.OCIChar+<>c__DisplayClass89_0`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <UpdateFKColor>b__0
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 v
 ```
 
-### Studio.OCIChar+<>c__DisplayClass110_0
+#### `Studio.OCIChar+<>c__DisplayClass110_0`
 
-Methods (1):
-```
+**Méthodes (1)**
+```text
 .ctor
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 _names
 ```
 
-### Studio.OCIChar+<>c__DisplayClass110_1
+#### `Studio.OCIChar+<>c__DisplayClass110_1`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <CheckAnimeParam>b__0
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 i
 CS$<>8__locals1
 ```
 
-### Studio.OCIChar+<>c__DisplayClass113_0
+#### `Studio.OCIChar+<>c__DisplayClass113_0`
 
-Methods (2):
-```
+**Méthodes (2)**
+```text
 .ctor
 <CheckParam>b__0
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 _name
 ```
 
-## 3. Types matching IKCtrl / FKCtrl / NeckLookControl (all namespaces)
+## Cinématique : FKCtrl, IKCtrl, ItemFKCtrl
 
-| Full name | Methods | Fields |
+Une recherche de `IKCtrl`, `FKCtrl` et `NeckLookControl` dans tous les espaces de noms renvoie ces trois types. Aucun type nommé exactement `NeckLookControl` n'existe dans une DLL Managed.
+
+| Nom complet | Méthodes | Champs |
 |---|---|---|
 | Studio.FKCtrl | 14 | 4 |
 | Studio.IKCtrl | 8 | 1 |
 | Studio.ItemFKCtrl | 6 | 2 |
 
-### Studio.FKCtrl
+### `Studio.FKCtrl`
 
-Methods (14):
-```
+**Méthodes (14)**
+```text
 .cctor
 .ctor
 CopyBone (x2)
@@ -2108,18 +2114,18 @@ SetEnable
 UsedBone (x3)
 ```
 
-Fields (4):
-```
+**Champs (4)**
+```text
 parts
 m_Transform
 listBones
 <count>k__BackingField
 ```
 
-### Studio.IKCtrl
+### `Studio.IKCtrl`
 
-Methods (8):
-```
+**Méthodes (8)**
+```text
 .ctor
 Awake
 CopyBone
@@ -2130,15 +2136,15 @@ InitTargetCoroutine
 set_addIKInfo
 ```
 
-Fields (1):
-```
+**Champs (1)**
+```text
 listIKInfo
 ```
 
-### Studio.ItemFKCtrl
+### `Studio.ItemFKCtrl`
 
-Methods (6):
-```
+**Méthodes (6)**
+```text
 .ctor
 get_count
 InitBone
@@ -2147,27 +2153,22 @@ OnDisable
 set_count
 ```
 
-Fields (2):
-```
+**Champs (2)**
+```text
 listBones
 <count>k__BackingField
 ```
 
-## 4. Character API (root namespace): method names only
+## Regard du cou (IL.dll)
 
-### ChaControl — NOT FOUND in root namespace
+Le système de regard du cou vit dans `IL.dll` (espace de noms racine) : `NeckLookCalc`, `NeckLookCalcVer2`, `NeckLookController`, `NeckLookControllerVer2`. `LightCtrl` et `MoveAnimator` n'existent dans aucune assembly Managed ; le contrôle des lumières est le panneau d'UI `Studio.MPLightCtrl` plus `OCILight` (voir les dumps ci-dessus).
 
-### ChaFileControl — NOT FOUND in root namespace
+### `NeckLookCalcVer2`
 
+`IL.dll`, espace de noms racine.
 
-### Note: NeckLookControl search
-
-No type named exactly 'NeckLookControl' exists in any Managed DLL. The neck-look system lives in IL.dll (root namespace): NeckLookCalc, NeckLookCalcVer2, NeckLookController, NeckLookControllerVer2. 'LightCtrl' and 'MoveAnimator' do not exist in any Managed assembly (light control = Studio.MPLightCtrl UI panel + OCILight; see dumps).
-
-### NeckLookCalcVer2 (IL.dll, root namespace)
-
-Methods:
-```
+**Méthodes**
+```text
 Awake
 Start
 OnDrawGizmos
@@ -2183,8 +2184,8 @@ SetBoneFixAngle
 .ctor
 ```
 
-Fields:
-```
+**Champs**
+```text
 isEnabled
 transformAim
 boneCalcAngle
@@ -2205,10 +2206,12 @@ lookType
 neckLookController2
 ```
 
-### NeckLookControllerVer2 (IL.dll, root namespace)
+### `NeckLookControllerVer2`
 
-Methods:
-```
+`IL.dll`, espace de noms racine.
+
+**Méthodes**
+```text
 Start
 LateUpdate
 ForceLateUpdate
@@ -2217,19 +2220,23 @@ LoadNeckLookCtrl
 .ctor
 ```
 
-Fields:
-```
+**Champs**
+```text
 neckLookScript
 ptnNo
 target
 rate
 ```
 
+## API de personnage (espace de noms `AIChara`)
 
-### Correction: ChaControl / ChaFileControl are in namespace `AIChara` (Assembly-CSharp.dll), not root
+`ChaControl` et `ChaFileControl` ne sont pas dans l'espace de noms racine. Ils vivent dans l'espace de noms `AIChara` d'`Assembly-CSharp.dll`. Les listings ne donnent que les noms de méthodes.
 
-### AIChara.ChaControl — methods (426)
-```
+### `AIChara.ChaControl`
+
+426 méthodes.
+
+```text
 .ctor
 <ChangeHeadAsync>b__477_0
 <ChangeHeadAsync>b__477_1
@@ -2638,8 +2645,11 @@ UpdateVisible
 UpdateWet
 ```
 
-### AIChara.ChaFileControl — methods (25)
-```
+### `AIChara.ChaFileControl`
+
+25 méthodes.
+
+```text
 .ctor
 CheckDataRange
 CheckDataRangeBody
@@ -2662,39 +2672,43 @@ SaveCharaFile (x3)
 SaveFace
 ```
 
+## Rôles des classes
 
+Les rôles sont déduits des seuls noms de membres (métadonnées, sans décompilation).
 
-## 5. Role guesses (~15 key classes)
-
-Based purely on member names (metadata only, no decompilation):
-
-| Class | Probable role |
+| Classe | Rôle probable |
 |---|---|
-| `Studio.Studio` | Scene-level singleton / god object. Owns `dicObjectCtrl` (all scene objects keyed by index), `sceneInfo`, `treeNodeCtrl`, `cameraCtrl`, and the Add*/Delete*/Duplicate/LoadScene/SaveScene/ImportScene entry points. The primary hook target for an MCP plugin (`Studio.Studio.Init`, `AddFemale`, `AddItem`, `GetCtrlInfo`, etc.). |
-| `Studio.SceneInfo` | Serializable scene data model: object dictionary (`dicObject`), map, post-processing (bloom/AO/DOF/fog/sun shafts/vignette), chara/map lights, BGM. `Save`/`Load`/`Import` are the .png scene-file (de)serialization. |
-| `Studio.CameraControl` | The user-driven viewport camera: orbit/zoom input processing (`InputMouseProc`, `InputKeyProc`), `Import`/`Export` of `CameraData`, FOV, LookAt, target position. Programmatic camera moves go through `Import(CameraData)` / `SetCamera`. |
-| `Studio.CameraLightCtrl` | Thin controller binding the character/map light rigs to the camera (`lightChara`, nested `LightInfo`/`MapLightInfo`); light values live in `SceneInfo.charaLight`/`mapLight`. |
-| `Studio.ObjectCtrlInfo` | Abstract base of every scene object (OCI = ObjectCtrlInfo). Holds `objectInfo` (serialized data), `treeNodeObject` (hierarchy node), `guideObject` (gizmo), lifecycle hooks (`OnSelect`, `OnDelete`, `OnAttach`/`OnDetach`, `OnVisible`). |
-| `Studio.OCIChar` | Character scene object. Wraps `charInfo` (AIChara.ChaControl via `charReference`), FK/IK (`fkCtrl`, `ikCtrl`, `finalIK`, `ActiveKinematicMode`), neck look (`neckLookCtrl`), expressions (mouth/eyes/blink/tears), animation (`LoadAnime`, `animeSpeed`, `animePattern`), voice, clothing state. Subclassed by `OCICharFemale` / `OCICharMale`. |
-| `Studio.OCIItem` | Item scene object: color/emission/metallic/pattern/alpha setters, item FK (`itemFKCtrl`), dynamic bones, anime pattern, panels. |
-| `Studio.OCILight` | Light scene object: `SetColor`, `SetIntensity`, `SetRange`, `SetSpotAngle`, `SetShadow`, `SetEnable` over a Unity `Light`. |
-| `Studio.OCIFolder` | Folder scene object — pure hierarchy grouping node with a `name`. |
-| `Studio.OCICamera` | Camera scene object (saved camera in the scene, `SetActive` to switch to it); rendered via `cameraControl`. |
-| `Studio.OCIRoute` | Motion-path object: ordered `listPoint` of `OCIRoutePoint`, `Play`/`Stop`/`Move`, line rendering. |
-| `Studio.TreeNodeCtrl` | Workspace (hierarchy) tree UI controller: selection (`selectNode`, `selectNodes`, `SelectSingle`, `SelectMultiple`), parenting (`SetParent`), node add/delete. `Studio.TreeNodeObject` is one row. |
-| `Studio.GuideObject` | Translate/rotate/scale gizmo attached to any manipulable transform; `MoveLocal`/`MoveWorld`/`Rotation`/`SetScale` + `changeAmount` bridge to undoable transform state (`Studio.ChangeAmount` = pos/rot/scale record). `GuideObjectManager` tracks/selects them. |
-| `Studio.AnimeControl` | Anim panel UI controller (speed/pattern/option-param sliders) bound to the selected `ObjectCtrlInfo`. Not the animation engine itself. |
-| `Studio.AddObjectFemale/Male/Item/Assist` | Static-style factories that instantiate scene objects: `Add()` returns the new OCI; `Assist` builds bone/IK-target/look-at scaffolding on characters. Key API for AI-driven object spawning. |
-| `Studio.Info` | Master list/catalog singleton: dictionaries of every loadable asset (items `dicItemLoadInfo`, anims `dicAnimeLoadInfo`, lights, maps, BGM, voices) loaded from ExcelData/AssetBundles. The source for "what can be spawned" enumeration. |
-| `Studio.FKCtrl` / `Studio.IKCtrl` / `Studio.ItemFKCtrl` | Per-character (or per-item) kinematics drivers: FKCtrl LateUpdate-applies stored bone rotations; IKCtrl manages IK target list (`listIKInfo`) feeding FinalIK. Mode switching happens via `OCIChar.ActiveKinematicMode` (`OICharInfo.KinematicMode` enum: static/anime/ik/fk). |
-| `NeckLookControllerVer2` (IL.dll) | Neck/eye look-at driver referenced by `OCIChar.neckLookCtrl`; pattern (`ptnNo`) + target transform + rate. |
-| `AIChara.ChaControl` | The character body/runtime API shared with the main game (clothes/accessory state, blend shapes, siru/hoho, bone refs). `OCIChar.charInfo` points at it. |
-| `AIChara.ChaFileControl` | Character card (de)serialization: `LoadCharaFile`/`SaveCharaFile`, `LoadFileLimited`, png-embedded data. |
+| `Studio.Studio` | Singleton / objet-dieu au niveau scène. Possède `dicObjectCtrl` (tous les objets de la scène indexés), `sceneInfo`, `treeNodeCtrl`, `cameraCtrl`, et les points d'entrée Add*/Delete*/Duplicate/LoadScene/SaveScene/ImportScene. La cible de hook principale pour un plugin MCP (`Studio.Studio.Init`, `AddFemale`, `AddItem`, `GetCtrlInfo`, etc.). |
+| `Studio.SceneInfo` | Modèle de données sérialisable de la scène : dictionnaire d'objets (`dicObject`), map, post-traitement (bloom/AO/DOF/brouillard/sun shafts/vignette), lumières chara/map, BGM. `Save`/`Load`/`Import` sont la (dé)sérialisation du fichier de scène .png. |
+| `Studio.CameraControl` | La caméra de vue pilotée par l'utilisateur : traitement des entrées orbite/zoom (`InputMouseProc`, `InputKeyProc`), `Import`/`Export` de `CameraData`, FOV, LookAt, position cible. Les déplacements de caméra programmatiques passent par `Import(CameraData)` / `SetCamera`. |
+| `Studio.CameraLightCtrl` | Contrôleur léger liant les rigs de lumière chara/map à la caméra (`lightChara`, `LightInfo`/`MapLightInfo` imbriqués) ; les valeurs de lumière vivent dans `SceneInfo.charaLight`/`mapLight`. |
+| `Studio.ObjectCtrlInfo` | Base abstraite de tout objet de scène (OCI = ObjectCtrlInfo). Porte `objectInfo` (données sérialisées), `treeNodeObject` (nœud de hiérarchie), `guideObject` (gizmo), et les hooks de cycle de vie (`OnSelect`, `OnDelete`, `OnAttach`/`OnDetach`, `OnVisible`). |
+| `Studio.OCIChar` | Objet de scène personnage. Enveloppe `charInfo` (`AIChara.ChaControl` via `charReference`), FK/IK (`fkCtrl`, `ikCtrl`, `finalIK`, `ActiveKinematicMode`), regard du cou (`neckLookCtrl`), expressions (bouche/yeux/clignement/larmes), animation (`LoadAnime`, `animeSpeed`, `animePattern`), voix et état des vêtements. Dérivé en `OCICharFemale` / `OCICharMale`. |
+| `Studio.OCIItem` | Objet de scène item : setters de couleur/émission/métallique/motif/alpha, FK d'item (`itemFKCtrl`), dynamic bones, motif d'animation, panneaux. |
+| `Studio.OCILight` | Objet de scène lumière : `SetColor`, `SetIntensity`, `SetRange`, `SetSpotAngle`, `SetShadow`, `SetEnable` sur une `Light` Unity. |
+| `Studio.OCIFolder` | Objet de scène dossier : un simple nœud de regroupement hiérarchique avec un `name`. |
+| `Studio.OCICamera` | Objet de scène caméra (une caméra enregistrée dans la scène, `SetActive` bascule dessus), rendue via `cameraControl`. |
+| `Studio.OCIRoute` | Objet chemin de mouvement : `listPoint` ordonnée d'`OCIRoutePoint`, `Play`/`Stop`/`Move`, rendu de la ligne. |
+| `Studio.TreeNodeCtrl` | Contrôleur d'UI de l'arbre du workspace (hiérarchie) : sélection (`selectNode`, `selectNodes`, `SelectSingle`, `SelectMultiple`), parentage (`SetParent`), ajout/suppression de nœuds. `Studio.TreeNodeObject` est une ligne. |
+| `Studio.GuideObject` | Gizmo de translation/rotation/échelle attaché à tout transform manipulable ; `MoveLocal`/`MoveWorld`/`Rotation`/`SetScale` plus `changeAmount` font le pont vers un état de transform annulable (`Studio.ChangeAmount` est l'enregistrement pos/rot/échelle). `GuideObjectManager` les suit et les sélectionne. |
+| `Studio.AnimeControl` | Contrôleur d'UI du panneau d'animation (curseurs vitesse/motif/option-param) lié à l'`ObjectCtrlInfo` sélectionné. Pas le moteur d'animation lui-même. |
+| `Studio.AddObjectFemale/Male/Item/Assist` | Fabriques de style statique qui instancient les objets de scène : `Add()` renvoie le nouvel OCI ; `Assist` construit l'échafaudage os/cible IK/look-at sur les personnages. API clé pour la création d'objets pilotée par IA. |
+| `Studio.Info` | Singleton maître de liste/catalogue : dictionnaires de tous les assets chargeables (items `dicItemLoadInfo`, anims `dicAnimeLoadInfo`, lumières, maps, BGM, voix) chargés depuis ExcelData/AssetBundles. La source pour énumérer ce qui peut être créé. |
+| `Studio.FKCtrl` / `Studio.IKCtrl` / `Studio.ItemFKCtrl` | Pilotes de cinématique par personnage (ou par item) : `FKCtrl` applique les rotations d'os stockées dans `LateUpdate` ; `IKCtrl` gère la liste des cibles IK (`listIKInfo`) qui alimente FinalIK. Le changement de mode passe par `OCIChar.ActiveKinematicMode` (enum `OICharInfo.KinematicMode` : static/anime/ik/fk). |
+| `NeckLookControllerVer2` (IL.dll) | Pilote de regard cou/yeux référencé par `OCIChar.neckLookCtrl` : motif (`ptnNo`), transform cible et taux. |
+| `AIChara.ChaControl` | L'API corps/runtime du personnage partagée avec le jeu principal (état des vêtements/accessoires, blend shapes, siru/hoho, références d'os). `OCIChar.charInfo` y pointe. |
+| `AIChara.ChaFileControl` | (Dé)sérialisation de la carte de personnage : `LoadCharaFile`/`SaveCharaFile`, `LoadFileLimited`, données embarquées dans le png. |
 
-### Notes for MiraStudio
+## Implications pour MiraStudio
 
-- `Studio.Studio` exposes static-looking accessors (`GetCtrlInfo`, `AddCtrlInfo`, `dicObjectCtrl` keyed by `Info` index) — the natural surface for an MCP command layer.
-- Undo/redo exists natively: `Studio.UndoRedoManager` + `*Command` classes (`GuideCommand.MoveAddCommand`, `RotationEqualsCommand`, ...) — MCP mutations should route through these to stay undoable.
-- Post-processing and lighting are all in `SceneInfo` fields — settable without touching UI classes.
-- `MPCharCtrl` and friends (`MP*Ctrl`) are the Manipulate Panel UI, useful as a reference for the "correct" call sequence when mutating an OCI, but should not be driven directly.
-- `LightCtrl` and `MoveAnimator` do not exist in this build; light control = `OCILight` + `SceneInfo` light data; route/motion = `OCIRoute`.
+- `Studio.Studio` expose des accesseurs d'allure statique (`GetCtrlInfo`, `AddCtrlInfo`, `dicObjectCtrl` indexé par l'index `Info`) : la surface naturelle pour une couche de commandes MCP.
+- L'undo/redo existe nativement : `Studio.UndoRedoManager` plus les classes `*Command` (`GuideCommand.MoveAddCommand`, `RotationEqualsCommand`, ...). Les mutations MCP doivent passer par elles pour rester annulables.
+- Le post-traitement et l'éclairage sont tous des champs de `SceneInfo`, modifiables sans toucher aux classes d'UI.
+- `MPCharCtrl` et les autres classes `MP*Ctrl` sont l'UI du Manipulate Panel. Elles servent de référence pour la bonne séquence d'appels lors d'une mutation d'OCI, mais ne doivent pas être pilotées directement.
+- `LightCtrl` et `MoveAnimator` n'existent pas dans ce build : le contrôle des lumières est `OCILight` plus les données de lumière de `SceneInfo` ; routes/mouvements = `OCIRoute`.
+
+## Voir aussi
+
+- [Studio API](../studio-api.md)
+- [Reverse engineering](../reverse-engineering.md)
+- [Assemblies](assemblies.md)

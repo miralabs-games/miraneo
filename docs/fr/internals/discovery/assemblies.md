@@ -1,48 +1,53 @@
-# Managed Assemblies Inventory — HS2 DX BetterRepack R16
+# Managed Assemblies — inventaire de HS2 DX BetterRepack R16
 
-Game root: `D:\[ScrewThisNoise] HoneySelect 2 DX BetterRepack R16(1)`
-Date: 2026-08-30
+Les DLL des deux dossiers `Managed` de l'installation, leurs tailles et versions, et ce qu'elles impliquent pour la cible .NET.
 
-## Summary
+Racine du jeu : `<game>`. Date de l'inventaire : 2026-08-30.
 
-- StudioNEOV2_Data\Managed: **114 DLLs**
-- HoneySelect2_Data\Managed: **116 DLLs**
-- Studio-only assemblies: **none**
-- HS2-only assemblies: `QHierarchyNullable.dll` (3,584 B), `QHierarchyRuntime.dll` (7,168 B)
-- The two Managed sets are otherwise identical by name; Assembly-CSharp differs in size (Studio 5,001,728 B vs HS2 4,978,688 B), so Studio code lives in Studio's own `Assembly-CSharp.dll`.
+## Résumé
 
-## .NET Profile
+- `StudioNEOV2_Data\Managed` : **114 DLL**.
+- `HoneySelect2_Data\Managed` : **116 DLL**.
+- Assemblies propres à Studio : **aucune**.
+- Assemblies propres à HS2 : `QHierarchyNullable.dll` (3,584 B), `QHierarchyRuntime.dll` (7,168 B).
+- Les deux ensembles sont par ailleurs identiques par nom. `Assembly-CSharp` diffère en taille (Studio 5,001,728 B, HS2 4,978,688 B) : le code de Studio vit donc dans le `Assembly-CSharp.dll` propre à Studio.
 
-| Check | Value |
+## Profil .NET
+
+| Vérification | Valeur |
 |---|---|
-| mscorlib.dll FileVersion | 4.6.57.0 (ProductName: "Mono Common Language Infrastructure") |
-| netstandard.dll present | **No** |
-| System.Core.dll FileVersion | 4.6.57.0 |
-| System.Runtime.dll | 4.0.0.0 (facade, 12,800 B) |
+| FileVersion de mscorlib.dll | 4.6.57.0 (ProductName : "Mono Common Language Infrastructure") |
+| netstandard.dll présent | **Non** |
+| FileVersion de System.Core.dll | 4.6.57.0 |
+| System.Runtime.dll | 4.0.0.0 (façade, 12,800 B) |
 
-Conclusion: Unity 2018.4-era Mono runtime with the .NET 4.x equivalent API profile, no netstandard facade. **Conventional BepInEx plugin TargetFramework: `net46`** (BepInEx 5.x, x64 Mono build). Reference the game's own Managed DLLs (or matching NuGet reference assemblies) when compiling.
+Le runtime est un Mono de l'époque Unity 2018.4, avec le profil d'API équivalent .NET 4.x et sans façade netstandard. Le `TargetFramework` usuel d'un plugin BepInEx est **`net46`** (BepInEx 5.x, build Mono x64). Référencer les DLL Managed du jeu, ou les assemblies de référence NuGet équivalentes, à la compilation.
 
-## Key Gameplay Assemblies (StudioNEOV2_Data)
+## Assemblies de gameplay clés
 
-| Assembly | Size (bytes) | FileVersion | Notes |
+Assemblies de `StudioNEOV2_Data\Managed` :
+
+| Assembly | Taille (octets) | FileVersion | Notes |
 |---|---|---|---|
-| Assembly-CSharp.dll | 5,001,728 | 0.0.0.0 | Main game/Studio code (Studio, ChaControl, etc.) |
-| Assembly-CSharp-firstpass.dll | 896,000 | 0.0.0.0 | Shared/plugin-level game code |
-| IL.dll | 158,720 | 0.0.0.0 | Illusion shared library (AssetBundle/manager helpers) |
-| Sirenix.Serialization.dll | 297,984 | 2.0.13 | Odin serialization |
-| Sirenix.Utilities.dll | 159,232 | 2.0.13 | |
-| Sirenix.OdinInspector.Attributes.dll | 30,208 | 2.0.13 | |
-| Sirenix.Serialization.Config.dll | 15,872 | 2.0.13 | |
-| UniRx.dll | 419,840 | 0.0.0.0 | Reactive extensions, heavily used by Illusion code |
+| Assembly-CSharp.dll | 5,001,728 | 0.0.0.0 | Code principal du jeu et de Studio (Studio, ChaControl, etc.) |
+| Assembly-CSharp-firstpass.dll | 896,000 | 0.0.0.0 | Code de jeu partagé / de niveau plugin |
+| IL.dll | 158,720 | 0.0.0.0 | Bibliothèque partagée Illusion (utilitaires AssetBundle / managers) |
+| Sirenix.Serialization.dll | 297,984 | 2.0.13 | Sérialisation Odin |
+| Sirenix.Utilities.dll | 159,232 | 2.0.13 | — |
+| Sirenix.OdinInspector.Attributes.dll | 30,208 | 2.0.13 | — |
+| Sirenix.Serialization.Config.dll | 15,872 | 2.0.13 | — |
+| UniRx.dll | 419,840 | 0.0.0.0 | Extensions réactives, très utilisées par le code Illusion |
 | UniRx.Async.dll | 242,688 | 0.0.0.0 | UniTask |
-| Unity.TextMeshPro.dll | 331,776 | 0.0.0.0 | Studio UI text |
-| UnityEngine.CoreModule.dll | 848,896 | 0.0.0.0 | Unity 2018.4 modular engine |
+| Unity.TextMeshPro.dll | 331,776 | 0.0.0.0 | Texte de l'UI de Studio |
+| UnityEngine.CoreModule.dll | 848,896 | 0.0.0.0 | Moteur modulaire Unity 2018.4 |
 
-No assembly named `*Chara*` or `Vectrosity` exists in either Managed directory; character classes are inside Assembly-CSharp.
+Aucune assembly nommée `*Chara*` ou `Vectrosity` n'existe dans l'un ou l'autre dossier Managed ; les classes de personnage sont dans `Assembly-CSharp`.
 
-## StudioNEOV2_Data\Managed — full list (Name | Bytes | FileVersion)
+## Liste complète : `StudioNEOV2_Data\Managed`
 
-| Name | Bytes | FileVersion |
+Les 114 DLL avec leur taille en octets et leur FileVersion.
+
+| Nom | Octets | FileVersion |
 |---|---|---|
 | Assembly-CSharp-firstpass.dll | 896000 | 0.0.0.0 |
 | Assembly-CSharp.dll | 5001728 | 0.0.0.0 |
@@ -159,16 +164,24 @@ No assembly named `*Chara*` or `Vectrosity` exists in either Managed directory; 
 | UnityEngine.WindModule.dll | 9216 | 0.0.0.0 |
 | UnityEngine.XRModule.dll | 44544 | 0.0.0.0 |
 
-## HoneySelect2_Data\Managed — names (116)
+## Différences avec `HoneySelect2_Data\Managed`
 
-Identical name set to StudioNEOV2_Data plus:
+`HoneySelect2_Data\Managed` contient 116 DLL : le même ensemble de noms que `StudioNEOV2_Data\Managed` plus les deux DLL propres à HS2.
 
-- QHierarchyNullable.dll (3,584 B)
-- QHierarchyRuntime.dll (7,168 B)
+| Type | Assemblies |
+|---|---|
+| Propres à Studio | aucune |
+| Propres à HS2 | `QHierarchyNullable.dll` (3,584 B), `QHierarchyRuntime.dll` (7,168 B) |
 
-Notable size differences vs Studio: `Assembly-CSharp.dll` 4,978,688 B, `Assembly-CSharp-firstpass.dll` 897,024 B.
+Écarts de taille notables par rapport à Studio :
 
-## Set Differences
+| Assembly | Taille HS2 (octets) | Taille Studio (octets) |
+|---|---|---|
+| Assembly-CSharp.dll | 4,978,688 | 5,001,728 |
+| Assembly-CSharp-firstpass.dll | 897,024 | 896,000 |
 
-- **Studio-only**: (none)
-- **HS2-only**: QHierarchyNullable.dll, QHierarchyRuntime.dll
+## Voir aussi
+
+- [Runtime](runtime.md)
+- [Modding APIs](modding-apis.md)
+- [Studio classes](studio-classes.md)
