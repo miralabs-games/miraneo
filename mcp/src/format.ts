@@ -1,5 +1,19 @@
 type Row = Record<string, unknown>;
 
+export const ECO = /^(1|true|on|yes)$/i.test(process.env.MIRANEO_ECO ?? "");
+
+const round = (n: number) => {
+  const r = Math.round(n * 1e4) / 1e4;
+  return Object.is(r, -0) ? 0 : r;
+};
+
+export function economise(v: unknown): unknown {
+  if (typeof v === "number") return Number.isInteger(v) ? v : round(v);
+  if (Array.isArray(v)) return v.map(economise);
+  if (isPlainObject(v)) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, economise(x)]));
+  return v;
+}
+
 const isPlainObject = (v: unknown): v is Row =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
