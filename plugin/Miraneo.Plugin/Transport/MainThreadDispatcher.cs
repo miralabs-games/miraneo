@@ -2,7 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 
-namespace MiraStudio.Transport
+namespace Miraneo.Transport
 {
     // Bridges the RPC worker threads to the Unity main thread: work is queued
     // here and drained from the plugin's Update() every frame.

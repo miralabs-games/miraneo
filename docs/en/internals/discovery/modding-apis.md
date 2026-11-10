@@ -1,6 +1,6 @@
 # Modding APIs — plugin and tool inventory of HS2 DX BetterRepack R16
 
-The plugin DLLs, API libraries, tools and optional mods found in the install, and which of them MiraStudio can reference.
+The plugin DLLs, API libraries, tools and optional mods found in the install, and which of them Miraneo can reference.
 
 Game root: `<game>`. Scanned: 2026-08-30 (read-only). 192 DLLs found under `BepInEx\Plugins` (recursive); the full list is in [BepInEx](bepinex.md). The folder on disk is `BepInEx\Plugins` (capital P); Windows is case-insensitive, so `BepInEx\plugins` resolves too.
 
@@ -107,7 +107,7 @@ Not installed by default. 40 entries are listed: 39 mods and `OptionalMods_ListD
 
 | Folder | DLLs | Role |
 |---|---|---|
-| `StudioNEOV2_Data\Managed\` | 114 | The primary target for MiraStudio (Studio NEO V2). Key: `Assembly-CSharp.dll`, `Assembly-CSharp-firstpass.dll`, `UnityEngine.dll`, `UnityEngine.CoreModule.dll` (+ per-module `UnityEngine.*.dll`) |
+| `StudioNEOV2_Data\Managed\` | 114 | The primary target for Miraneo (Studio NEO V2). Key: `Assembly-CSharp.dll`, `Assembly-CSharp-firstpass.dll`, `UnityEngine.dll`, `UnityEngine.CoreModule.dll` (+ per-module `UnityEngine.*.dll`) |
 | `HoneySelect2_Data\Managed\` | 116 | Main game; same `Assembly-CSharp` family, if the plugin also targets the main game |
 
 See [Assemblies](assemblies.md) for the full lists.

@@ -1,6 +1,6 @@
 # Architecture — couches, règles, décisions
 
-Comment MiraStudio est découpé, les règles que suit chaque couche, et pourquoi les principaux choix ont été faits.
+Comment Miraneo est découpé, les règles que suit chaque couche, et pourquoi les principaux choix ont été faits.
 
 ## Couches
 
@@ -8,10 +8,10 @@ Comment MiraStudio est découpé, les règles que suit chaque couche, et pourquo
 Client MCP (Claude / ChatGPT)
   │  MCP sur stdio
   ▼
-MiraStudio MCP  (TypeScript / Bun)          mcp/
+Miraneo MCP  (TypeScript / Bun)          mcp/
   │  HTTP JSON-RPC 2.0, localhost:6472
   ▼
-MiraStudio.Plugin (BepInEx, C#, net46)      plugin/MiraStudio.Plugin/
+Miraneo.Plugin (BepInEx, C#, net46)      plugin/Miraneo.Plugin/
   ├── Transport   — HttpListener sur localhost, parse les requêtes, dispatche, dispatcher du thread principal
   ├── Core        — contrats indépendants du jeu : DTO, modèle JSON, parsing des paramètres, exceptions d'API
   ├── Services    — implémentent les contrats, orchestrent les appels d'adapter, coroutines du thread principal
@@ -34,7 +34,7 @@ Partagé par les deux côtés : `shared/schemas/`, un fichier JSON par tool avec
 
 - **Les types Unity ne franchissent jamais la frontière de l'adapter.** Core, Services et Transport ne parlent qu'en DTO : des enregistrements sérialisables simples, reflétés par les schémas JSON de `shared/schemas/`.
 - **Discipline du thread principal.** Les API de Studio et d'Unity ne s'utilisent que sur le thread principal. Le transport reçoit les requêtes sur des threads de travail et délègue l'exécution au thread principal d'Unity (une file vidée dans `Update()`) ; les réponses se terminent de façon asynchrone. Un appel Unity depuis un thread de travail n'échoue pas proprement : il fait planter Studio.
-- **Ids stables.** Les clés du dictionnaire `ObjectCtrlInfo` de Studio sont la source de vérité de l'identité des objets. MiraStudio les expose comme ids entiers.
+- **Ids stables.** Les clés du dictionnaire `ObjectCtrlInfo` de Studio sont la source de vérité de l'identité des objets. Miraneo les expose comme ids entiers.
 - **Lecture seule d'abord.** Le premier jeu de tools livré était l'inspection plus la capture d'écran ; les écritures sont venues après.
 - **Batch et idempotence.** `studio_execute_batch` exécute une liste d'opérations en un aller-retour. Les opérations d'écriture acceptent des valeurs absolues, pas des deltas, et des patchs partiels (un champ omis est inchangé).
 - **Schémas stricts.** Chaque tool a un schéma JSON ; le serveur MCP le sert comme schéma d'entrée du tool.

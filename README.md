@@ -1,4 +1,4 @@
-# MiraStudio
+# Miraneo
 
 [![focus](https://img.shields.io/badge/focus-MCP%20for%20Studio%20NEO%20V2-purple)](./docs/en/tools.md) [![lang](https://img.shields.io/badge/lang-C%23%20net46%20%C2%B7%20TypeScript%2FBun-green)](./docs/en/architecture.md) [![target](https://img.shields.io/badge/target-Honey%20Select%202%20DX-orange)](./docs/en/getting-started.md) [![tools](https://img.shields.io/badge/tools-56-blue)](./docs/en/tools.md)
 
@@ -10,19 +10,19 @@
 
 ---
 
-## 🧠 What is MiraStudio?
+## 🧠 What is Miraneo?
 
 An MCP server plus a BepInEx plugin that let any MCP-compatible agent (Claude, ChatGPT, ...) drive **Studio NEO V2**, the scene editor of Honey Select 2 DX. The agent reads the scene, spawns objects and characters, poses them bone by bone, sets the environment, and looks at the result through screenshots.
 
 Two pieces share one contract:
 
-- **`MiraStudio.Plugin`** — a BepInEx plugin (C#, net46) that runs inside Studio and serves JSON-RPC on `localhost:6472`.
+- **`Miraneo.Plugin`** — a BepInEx plugin (C#, net46) that runs inside Studio and serves JSON-RPC on `localhost:6472`.
 - **`mcp/`** — an MCP server (TypeScript on Bun, stdio) that exposes 56 tools and forwards each one to the plugin.
 
 The input and output of every tool is described once, in [`shared/schemas/`](./shared/schemas/): one JSON file per tool. The MCP server imports them directly; the plugin implements them.
 
 ```
-MCP client ──stdio──▶ MiraStudio MCP ──HTTP JSON-RPC──▶ MiraStudio.Plugin ──▶ Studio NEO V2
+MCP client ──stdio──▶ Miraneo MCP ──HTTP JSON-RPC──▶ Miraneo.Plugin ──▶ Studio NEO V2
 (Claude, ChatGPT)     (TypeScript / Bun)  localhost:6472   (BepInEx / C#)       (Unity 2018.4, Mono)
 ```
 
@@ -31,8 +31,8 @@ MCP client ──stdio──▶ MiraStudio MCP ──HTTP JSON-RPC──▶ Mira
 ## 🚀 Quickstart
 
 ```sh
-# 1. Build and deploy the plugin (needs plugin/MiraStudio.Plugin/GamePath.local.props)
-dotnet build plugin/MiraStudio.Plugin -c Release
+# 1. Build and deploy the plugin (needs plugin/Miraneo.Plugin/GamePath.local.props)
+dotnet build plugin/Miraneo.Plugin -c Release
 
 # 2. Install the MCP server dependencies
 cd mcp && bun install
@@ -46,7 +46,7 @@ Register the server in your MCP client (this repository ships a `.mcp.json`):
 ```json
 {
   "mcpServers": {
-    "mirastudio": {
+    "miraneo": {
       "command": "bun",
       "args": ["run", "mcp/src/index.ts"]
     }
@@ -81,13 +81,13 @@ Target setup:
 | Plugin | .NET Framework 4.6 (`net46`) |
 | MCP server | Bun |
 
-Build the plugin (compiles and copies `MiraStudio.dll` into `BepInEx\Plugins\MiraStudio`):
+Build the plugin (compiles and copies `Miraneo.dll` into `BepInEx\Plugins\Miraneo`):
 
 ```sh
-dotnet build plugin/MiraStudio.Plugin -c Release
+dotnet build plugin/Miraneo.Plugin -c Release
 ```
 
-The build reads the game folder from `plugin/MiraStudio.Plugin/GamePath.local.props` (untracked). Copy `GamePath.props.example` next to it and set `GameDir`.
+The build reads the game folder from `plugin/Miraneo.Plugin/GamePath.local.props` (untracked). Copy `GamePath.props.example` next to it and set `GameDir`.
 
 ---
 
@@ -137,7 +137,7 @@ Two third-party plugins are bridged when installed: **Timeline** and **NodesCons
 ```mermaid
 flowchart TD
     A["MCP client<br/>Claude / ChatGPT"]
-    B["MiraStudio MCP<br/>TypeScript / Bun, stdio"]
+    B["Miraneo MCP<br/>TypeScript / Bun, stdio"]
     C["Transport<br/>HttpListener, POST /rpc + GET /health"]
     D["Main-thread dispatcher<br/>drained in Update()"]
     E["Services<br/>orchestrate adapter calls"]
@@ -174,8 +174,8 @@ Unity and Studio types stop at the adapter layer; everything above speaks DTOs m
 ## 🛠️ Build & tests
 
 ```sh
-# plugin: compile + deploy into BepInEx\Plugins\MiraStudio
-dotnet build plugin/MiraStudio.Plugin -c Release
+# plugin: compile + deploy into BepInEx\Plugins\Miraneo
+dotnet build plugin/Miraneo.Plugin -c Release
 
 # MCP server: install, typecheck, smoke test
 cd mcp && bun install && bun x tsc --noEmit && bun run test/smoke.ts
@@ -186,9 +186,9 @@ The smoke test spawns the MCP server over stdio, lists the tools (56) and calls 
 Repository layout:
 
 ```text
-MiraStudio/
+Miraneo/
 ├── docs/{en,fr}/             # user docs, architecture, internals
-├── plugin/MiraStudio.Plugin/ # BepInEx plugin (Core, Adapters, Services, Transport)
+├── plugin/Miraneo.Plugin/ # BepInEx plugin (Core, Adapters, Services, Transport)
 ├── mcp/                      # MCP server (TypeScript / Bun)
 ├── shared/schemas/           # one JSON schema per tool, shared by plugin and MCP
 └── tools/reverse-engineering/# assembly dump / diagnostic scripts
@@ -202,6 +202,6 @@ How the target was analysed lives in the internals: [`reverse-engineering`](./do
 
 - Reverse-engineer first — never code against an imagined API.
 - Read-only tools before write tools.
-- Unity and Studio types never leak past the adapter layer; the MCP only sees the MiraStudio API.
+- Unity and Studio types never leak past the adapter layer; the MCP only sees the Miraneo API.
 - Every MCP tool has a strict JSON schema.
 - Idempotent operations, stable ids, batch support.

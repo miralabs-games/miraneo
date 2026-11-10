@@ -2,11 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using MiraStudio.Core;
+using Miraneo.Core;
 using UnityEngine;
 using SNeo = global::Studio;
 
-namespace MiraStudio.Adapters
+namespace Miraneo.Adapters
 {
     // NodesConstraints (joan6694, com.joan6694.illusionplugins.nodesconstraints
     // 1.3.3) ships no reference assembly and, unlike Timeline, exposes nothing at

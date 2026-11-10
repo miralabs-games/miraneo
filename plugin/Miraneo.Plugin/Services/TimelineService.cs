@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using MiraStudio.Adapters;
-using MiraStudio.Core;
+using Miraneo.Adapters;
+using Miraneo.Core;
 
-namespace MiraStudio.Services
+namespace Miraneo.Services
 {
     // Timeline edits all land within one frame, so unlike the map and scene
     // services none of this needs a coroutine. It stays off IStudioApi because

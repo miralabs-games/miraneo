@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@mirastudio/mcp",
+      "name": "@miraneo/mcp",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.17.0",
       },

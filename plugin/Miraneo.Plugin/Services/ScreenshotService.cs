@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
 using System.Threading.Tasks;
-using MiraStudio.Core;
+using Miraneo.Core;
 using UnityEngine;
 
-namespace MiraStudio.Services
+namespace Miraneo.Services
 {
     public static class ScreenshotService
     {

@@ -1,6 +1,6 @@
 # Reverse Engineering — target installation
 
-What MiraStudio runs against: the exact Honey Select 2 DX / Studio NEO V2 install, its loader stack, assemblies, Studio classes and modding ecosystem, as found by inspecting the repack and decompiling its assemblies (snapshot 2026-08-30).
+What Miraneo runs against: the exact Honey Select 2 DX / Studio NEO V2 install, its loader stack, assemblies, Studio classes and modding ecosystem, as found by inspecting the repack and decompiling its assemblies (snapshot 2026-08-30).
 
 Raw reports with the full dumps live in [discovery/](discovery/): [assemblies](discovery/assemblies.md), [bepinex](discovery/bepinex.md), [modding-apis](discovery/modding-apis.md), [runtime](discovery/runtime.md), [studio-classes](discovery/studio-classes.md), [userdata](discovery/userdata.md). What the plugin does with these APIs is in [studio-api.md](studio-api.md).
 
@@ -63,16 +63,16 @@ Caveats:
 
 ## Modding ecosystem
 
-Installed plugins that matter for MiraStudio:
+Installed plugins that matter for Miraneo:
 
-| Plugin | Version | Relevance for MiraStudio |
+| Plugin | Version | Relevance for Miraneo |
 |---|---|---|
 | HS2API (IllusionModdingAPI) | 1.41 | Official modding API, XML docs beside the DLL |
 | Timeline (joan6694) | 1.4.1.0 | Keyframe animation. No reference DLL — integration is reflection-based ([optional-plugins](../optional-plugins.md)) |
 | HS2_Screencap (BepisPlugins R20) | 20.0 | Screenshot reference implementation |
 | RuntimeUnityEditor | 5.4.0 | Live inspection during development |
 | NodesConstraints | 1.3.3.0 | Node constraints. No reference DLL, and nothing public at all ([studio-api.md](studio-api.md#nodesconstraints-bridge-optional-plugin-reflection-only)) |
-| HS2_ExtensibleSaveFormat (BepisPlugins) | R20 | Transpiles `SceneInfo.Save`/`Load`/`Import`, so third-party scene data rides along with MiraStudio's own save/load path |
+| HS2_ExtensibleSaveFormat (BepisPlugins) | R20 | Transpiles `SceneInfo.Save`/`Load`/`Import`, so third-party scene data rides along with Miraneo's own save/load path |
 | HS2PE (PoseEditor) | — | Pose data reference |
 | ConfigurationManager | 18.3.0 | Config UI |
 
@@ -95,7 +95,7 @@ All paths are relative to `<game>`.
 - dotnet SDK 8.0.424 / 9.0.313 (SDK-style csproj + `Microsoft.NETFramework.ReferenceAssemblies` for `net46`), bun 1.4.0, node 22.15.0.
 - No MSBuild in `PATH`.
 
-## Consequences for MiraStudio
+## Consequences for Miraneo
 
 1. The plugin is a BepInEx 5 `BaseUnityPlugin`, `net46`, x64. HarmonyX 2.9 is available if patching is ever needed; the plugin does not patch.
 2. Studio and Unity APIs are main-thread only → the transport thread marshals work into `Update()` and completes responses asynchronously ([threading rules](studio-api.md#threading-rules)).

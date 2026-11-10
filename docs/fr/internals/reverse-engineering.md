@@ -1,6 +1,6 @@
 # Rétro-ingénierie — installation cible
 
-Ce contre quoi MiraStudio tourne : l'installation exacte de Honey Select 2 DX / Studio NEO V2, sa pile de chargement, ses assemblies, ses classes Studio et son écosystème de mods, telle que relevée en inspectant le repack et en décompilant ses assemblies (instantané du 2026-08-30).
+Ce contre quoi Miraneo tourne : l'installation exacte de Honey Select 2 DX / Studio NEO V2, sa pile de chargement, ses assemblies, ses classes Studio et son écosystème de mods, telle que relevée en inspectant le repack et en décompilant ses assemblies (instantané du 2026-08-30).
 
 Les rapports bruts avec les dumps complets sont dans [discovery/](discovery/) : [assemblies](discovery/assemblies.md), [bepinex](discovery/bepinex.md), [modding-apis](discovery/modding-apis.md), [runtime](discovery/runtime.md), [studio-classes](discovery/studio-classes.md), [userdata](discovery/userdata.md). Ce que le plugin fait de ces API est décrit dans [studio-api.md](studio-api.md).
 
@@ -63,16 +63,16 @@ Réserves :
 
 ## Écosystème de mods
 
-Plugins installés qui comptent pour MiraStudio :
+Plugins installés qui comptent pour Miraneo :
 
-| Plugin | Version | Pertinence pour MiraStudio |
+| Plugin | Version | Pertinence pour Miraneo |
 |---|---|---|
 | HS2API (IllusionModdingAPI) | 1.41 | API de modding officielle, docs XML à côté de la DLL |
 | Timeline (joan6694) | 1.4.1.0 | Animation par keyframes. Pas de DLL de référence — l'intégration passe par réflexion ([optional-plugins](../optional-plugins.md)) |
 | HS2_Screencap (BepisPlugins R20) | 20.0 | Implémentation de référence des captures d'écran |
 | RuntimeUnityEditor | 5.4.0 | Inspection en direct pendant le développement |
 | NodesConstraints | 1.3.3.0 | Contraintes de nœuds. Pas de DLL de référence, et rien de public du tout ([studio-api.md](studio-api.md#pont-nodesconstraints-plugin-optionnel-réflexion-uniquement)) |
-| HS2_ExtensibleSaveFormat (BepisPlugins) | R20 | Transpile `SceneInfo.Save`/`Load`/`Import` : les données de scène tierces voyagent donc avec le chemin de sauvegarde/chargement de MiraStudio |
+| HS2_ExtensibleSaveFormat (BepisPlugins) | R20 | Transpile `SceneInfo.Save`/`Load`/`Import` : les données de scène tierces voyagent donc avec le chemin de sauvegarde/chargement de Miraneo |
 | HS2PE (PoseEditor) | — | Référence pour les données de pose |
 | ConfigurationManager | 18.3.0 | Interface de configuration |
 
@@ -95,7 +95,7 @@ Tous les chemins sont relatifs à `<game>`.
 - SDK dotnet 8.0.424 / 9.0.313 (csproj de style SDK + `Microsoft.NETFramework.ReferenceAssemblies` pour `net46`), bun 1.4.0, node 22.15.0.
 - Pas de MSBuild dans le `PATH`.
 
-## Conséquences pour MiraStudio
+## Conséquences pour Miraneo
 
 1. Le plugin est un `BaseUnityPlugin` BepInEx 5, `net46`, x64. HarmonyX 2.9 est disponible si un patch devient nécessaire ; le plugin ne patche rien.
 2. Les API Studio et Unity sont réservées au thread principal → le thread de transport fait transiter le travail vers `Update()` et termine les réponses de façon asynchrone ([règles de threading](studio-api.md#règles-de-threading)).

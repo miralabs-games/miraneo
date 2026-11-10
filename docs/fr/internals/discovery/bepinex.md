@@ -71,7 +71,7 @@ Dossiers de premier niveau de `BepInEx` : `BRInfo`, `cache`, `config`, `core`, `
 | Chainloader | HideManagerGameObject = false |
 | SplashScreen | Enabled = true, OnlyNoConsole = true |
 
-Pour MiraStudio : les logs console et disque sont tous deux désactivés d'origine. Le plugin doit s'appuyer sur son propre puits de log, ou la config doit être ajustée.
+Pour Miraneo : les logs console et disque sont tous deux désactivés d'origine. Le plugin doit s'appuyer sur son propre puits de log, ou la config doit être ajustée.
 
 ## Autres fichiers de config
 

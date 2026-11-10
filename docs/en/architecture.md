@@ -1,6 +1,6 @@
 # Architecture — layers, rules, decisions
 
-How MiraStudio is split, the rules each layer follows, and why the main choices were made.
+How Miraneo is split, the rules each layer follows, and why the main choices were made.
 
 ## Layers
 
@@ -8,10 +8,10 @@ How MiraStudio is split, the rules each layer follows, and why the main choices 
 MCP client (Claude / ChatGPT)
   │  MCP over stdio
   ▼
-MiraStudio MCP  (TypeScript / Bun)          mcp/
+Miraneo MCP  (TypeScript / Bun)          mcp/
   │  HTTP JSON-RPC 2.0, localhost:6472
   ▼
-MiraStudio.Plugin (BepInEx, C#, net46)      plugin/MiraStudio.Plugin/
+Miraneo.Plugin (BepInEx, C#, net46)      plugin/Miraneo.Plugin/
   ├── Transport   — HttpListener on localhost, parses requests, dispatches, main-thread dispatcher
   ├── Core        — game-agnostic contracts: DTOs, JSON model, parameter parsing, API exceptions
   ├── Services    — implement the contracts, orchestrate adapter calls, main-thread coroutines
@@ -34,7 +34,7 @@ Shared by both sides: `shared/schemas/`, one JSON file per tool with its `descri
 
 - **Unity types never cross the adapter boundary.** Core, Services and Transport speak DTOs only: plain serialisable records mirrored by the JSON schemas in `shared/schemas/`.
 - **Main-thread discipline.** Studio and Unity APIs are main-thread only. The transport receives requests on worker threads and marshals execution to the Unity main thread (a queue drained in `Update()`); responses complete asynchronously. A worker-thread Unity call does not fail cleanly: it crashes Studio.
-- **Stable ids.** Studio's own `ObjectCtrlInfo` dictionary keys are the source of truth for object identity. MiraStudio exposes them as integer ids.
+- **Stable ids.** Studio's own `ObjectCtrlInfo` dictionary keys are the source of truth for object identity. Miraneo exposes them as integer ids.
 - **Read-only first.** The first shipped tool set was inspection plus screenshot; writes came after.
 - **Batch and idempotency.** `studio_execute_batch` executes a list of operations in one round-trip. Write operations accept absolute values, not deltas, and partial patches (an omitted field is unchanged).
 - **Strict schemas.** Every tool has a JSON schema; the MCP server serves it as the tool's input schema.

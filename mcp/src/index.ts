@@ -4,7 +4,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { TOOLS, runTool } from "./tools.ts";
 
 const server = new Server(
-  { name: "mirastudio", version: "0.1.0" },
+  { name: "miraneo", version: "0.1.0" },
   { capabilities: { tools: {} } },
 );
 
@@ -21,4 +21,4 @@ server.setRequestHandler(CallToolRequestSchema, async (req) =>
 );
 
 await server.connect(new StdioServerTransport());
-console.error("[mirastudio-mcp] connected on stdio");
+console.error("[miraneo-mcp] connected on stdio");

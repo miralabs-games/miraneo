@@ -2699,7 +2699,7 @@ Les rôles sont déduits des seuls noms de membres (métadonnées, sans décompi
 | `AIChara.ChaControl` | L'API corps/runtime du personnage partagée avec le jeu principal (état des vêtements/accessoires, blend shapes, siru/hoho, références d'os). `OCIChar.charInfo` y pointe. |
 | `AIChara.ChaFileControl` | (Dé)sérialisation de la carte de personnage : `LoadCharaFile`/`SaveCharaFile`, `LoadFileLimited`, données embarquées dans le png. |
 
-## Implications pour MiraStudio
+## Implications pour Miraneo
 
 - `Studio.Studio` expose des accesseurs d'allure statique (`GetCtrlInfo`, `AddCtrlInfo`, `dicObjectCtrl` indexé par l'index `Info`) : la surface naturelle pour une couche de commandes MCP.
 - L'undo/redo existe nativement : `Studio.UndoRedoManager` plus les classes `*Command` (`GuideCommand.MoveAddCommand`, `RotationEqualsCommand`, ...). Les mutations MCP doivent passer par elles pour rester annulables.

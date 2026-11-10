@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace MiraStudio.Core
+namespace Miraneo.Core
 {
     public abstract class JsonNode
     {

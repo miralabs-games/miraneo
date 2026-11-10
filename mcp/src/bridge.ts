@@ -14,7 +14,7 @@ interface RpcResponse {
 export class MiraBridge {
   private nextId = 1;
 
-  constructor(private readonly baseUrl: string = process.env.MIRASTUDIO_URL ?? "http://localhost:6472") {}
+  constructor(private readonly baseUrl: string = process.env.MIRANEO_URL ?? "http://localhost:6472") {}
 
   async call(method: string, params: Record<string, unknown> = {}, timeoutMs = 15000): Promise<unknown> {
     let res: Response;
@@ -28,7 +28,7 @@ export class MiraBridge {
     } catch (e) {
       const cause = e instanceof Error ? e.message : String(e);
       throw new Error(
-        `MiraStudio plugin unreachable at ${this.baseUrl} — is Studio NEO V2 running with the MiraStudio plugin loaded? (${cause})`,
+        `Miraneo plugin unreachable at ${this.baseUrl} — is Studio NEO V2 running with the Miraneo plugin loaded? (${cause})`,
       );
     }
     const body = (await res.json()) as RpcResponse;

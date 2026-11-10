@@ -6,9 +6,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BepInEx.Logging;
-using MiraStudio.Core;
+using Miraneo.Core;
 
-namespace MiraStudio.Transport
+namespace Miraneo.Transport
 {
     // Local JSON-RPC 2.0 endpoint: POST /rpc, GET /health. Requests are received
     // on worker threads and executed on the Unity main thread via the dispatcher.
@@ -123,7 +123,7 @@ namespace MiraStudio.Transport
                     var inner = Unwrap(e);
                     var api = inner as StudioApiException;
                     var code = api != null ? api.Code : inner is TimeoutException ? -32002 : -32603;
-                    _log.LogWarning("MiraStudio batch stopped at step " + i + " (" + names[i] + "): " + inner.Message);
+                    _log.LogWarning("Miraneo batch stopped at step " + i + " (" + names[i] + "): " + inner.Message);
                     return new JsonObject()
                         .Add("ok", false)
                         .Add("executed", i)
@@ -157,15 +157,15 @@ namespace MiraStudio.Transport
             }
             catch (Exception e)
             {
-                _log.LogError("MiraStudio RPC failed to bind " + prefix + ": " + e.Message);
+                _log.LogError("Miraneo RPC failed to bind " + prefix + ": " + e.Message);
                 _log.LogError("If this is an access/ACL error, run once from an elevated prompt: netsh http add urlacl url=" + prefix + " user=" + Environment.UserName);
                 _listener = null;
                 return false;
             }
             _running = true;
-            _thread = new Thread(AcceptLoop) { IsBackground = true, Name = "MiraStudio.Rpc" };
+            _thread = new Thread(AcceptLoop) { IsBackground = true, Name = "Miraneo.Rpc" };
             _thread.Start();
-            _log.LogInfo("MiraStudio RPC listening on " + prefix);
+            _log.LogInfo("Miraneo RPC listening on " + prefix);
             return true;
         }
 
@@ -256,7 +256,7 @@ namespace MiraStudio.Transport
             }
             catch (Exception e)
             {
-                _log.LogError("MiraStudio RPC request failed: " + e);
+                _log.LogError("Miraneo RPC request failed: " + e);
                 try { ctx.Response.Abort(); } catch { }
             }
         }

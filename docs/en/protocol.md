@@ -11,7 +11,7 @@ The plugin serves JSON-RPC 2.0 over HTTP on `localhost:6472`. The MCP server is 
 
 Any other method or path answers HTTP 404 with a `-32600` error body (`use POST /rpc or GET /health`).
 
-The server is an `HttpListener` bound to `http://localhost:<port>/`. The port is `Server.Port` in `BepInEx\config\com.mirastudio.plugin.cfg` (default `6472`); the MCP side reads `MIRASTUDIO_URL` (default `http://localhost:6472`).
+The server is an `HttpListener` bound to `http://localhost:<port>/`. The port is `Server.Port` in `BepInEx\config\com.miraneo.plugin.cfg` (default `6472`); the MCP side reads `MIRANEO_URL` (default `http://localhost:6472`).
 
 ## Health
 
@@ -75,7 +75,7 @@ Each method has its own timeout, and the MCP side has its own too:
 
 ## execute_batch
 
-`studio_execute_batch` runs up to 32 steps in order in one call. Each step is `{method, params}`; `method` is any MiraStudio tool except `studio_screenshot` and `studio_execute_batch` itself.
+`studio_execute_batch` runs up to 32 steps in order in one call. Each step is `{method, params}`; `method` is any Miraneo tool except `studio_screenshot` and `studio_execute_batch` itself.
 
 ```json
 {"jsonrpc":"2.0","id":2,"method":"studio_execute_batch","params":{"steps":[

@@ -1,6 +1,6 @@
 # Studio API — plugin internals
 
-How the plugin reaches Studio NEO V2: the layering inside `plugin/MiraStudio.Plugin/`, the Core contract, the exact Studio calls behind every read and write, and the traps found in the decompiled code.
+How the plugin reaches Studio NEO V2: the layering inside `plugin/Miraneo.Plugin/`, the Core contract, the exact Studio calls behind every read and write, and the traps found in the decompiled code.
 
 Context: [architecture](../architecture.md) (layers and decisions), [protocol](../protocol.md) (wire format), [tools](../tools.md) (the MCP surface), [optional-plugins](../optional-plugins.md) (Timeline and NodesConstraints as seen by the user), [reverse-engineering](reverse-engineering.md) (the target install).
 
@@ -267,7 +267,7 @@ Each rule below comes from decompiled code, and most were confirmed live. The ad
 
 ### Scenes
 
-- **Saving is not atomic in Studio and the destructive step comes first.** `SceneInfo.Save` opens the target with `FileMode.Create` — truncating it — and only *then* calls `CreatePngScreen`; a capture that throws leaves the previous scene destroyed. `SaveScene` therefore writes to a sibling `*.mirastudio-tmp` and `File.Move`s it over the target only once the bytes are known to start with the PNG signature. `SceneInfo.Save` returns `true` unconditionally (there is no `false` path), so inspecting the written file is the *only* failure signal.
+- **Saving is not atomic in Studio and the destructive step comes first.** `SceneInfo.Save` opens the target with `FileMode.Create` — truncating it — and only *then* calls `CreatePngScreen`; a capture that throws leaves the previous scene destroyed. `SaveScene` therefore writes to a sibling `*.miraneo-tmp` and `File.Move`s it over the target only once the bytes are known to start with the PNG signature. `SceneInfo.Save` returns `true` unconditionally (there is no `false` path), so inspecting the written file is the *only* failure signal.
 - `SceneInfo.cameraSaveData` is `null` until the session's first save or load (`Init()` clears it, the constructor never sets it) and `SceneInfo.Save` dereferences it with no guard — assigning `cameraCtrl.Export()` before saving is mandatory, not cosmetic. `cameraData[10]` is pre-filled by the constructor but only refilled by `Init()` when Studio is instanced, so it is null-checked too.
 - A save waits one `WaitForEndOfFrame` first. The thumbnail renders the live cameras, whose transform is only applied in `LateUpdate`, and `OCIChar.OnSavePreprocessing` dereferences `neckLookCtrl` / `charInfo.animBody` with no null guard — so a character added in the same dispatcher drain would NRE. One frame covers both.
 - **Nothing reflects `charaLight` when a scene is loaded.** `Studio.OnLoadAfter` reloads the map, both overlays and `systemButtonCtrl.UpdateInfo()`, but never touches `m_CameraLightCtrl`, whose only callers are its own panel's `Start`/`OnEnable`. A scene loaded in vanilla Studio therefore keeps the previous lighting until the light panel is opened. `LoadScene` calls `cameraLightCtrl.Reflect()` itself so the viewport matches the scene it just read.

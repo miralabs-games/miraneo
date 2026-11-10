@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using MiraStudio.Adapters;
-using MiraStudio.Core;
+using Miraneo.Adapters;
+using Miraneo.Core;
 
-namespace MiraStudio.Services
+namespace Miraneo.Services
 {
     // Constraint edits all land within one frame, so like the timeline service
     // none of this needs a coroutine, and it stays off IStudioApi because

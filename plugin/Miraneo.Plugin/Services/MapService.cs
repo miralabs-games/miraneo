@@ -1,11 +1,11 @@
 using System;
 using System.Collections;
 using System.Threading.Tasks;
-using MiraStudio.Adapters;
-using MiraStudio.Core;
+using Miraneo.Adapters;
+using Miraneo.Core;
 using UnityEngine;
 
-namespace MiraStudio.Services
+namespace Miraneo.Services
 {
     public static class MapService
     {

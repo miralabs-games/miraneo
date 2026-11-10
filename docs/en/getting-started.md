@@ -27,7 +27,7 @@ How these versions were established: [internals/reverse-engineering.md](./intern
 The project needs to know where the game is installed. Copy the example props file and set `GameDir`:
 
 ```text
-plugin/MiraStudio.Plugin/GamePath.props.example  →  plugin/MiraStudio.Plugin/GamePath.local.props
+plugin/Miraneo.Plugin/GamePath.props.example  →  plugin/Miraneo.Plugin/GamePath.local.props
 ```
 
 ```xml
@@ -41,21 +41,21 @@ plugin/MiraStudio.Plugin/GamePath.props.example  →  plugin/MiraStudio.Plugin/G
 `GamePath.local.props` is untracked. Then build:
 
 ```sh
-dotnet build plugin/MiraStudio.Plugin -c Release
+dotnet build plugin/Miraneo.Plugin -c Release
 ```
 
-The build compiles `MiraStudio.dll` against the game's own assemblies (`StudioNEOV2_Data\Managed`, `BepInEx\core\BepInEx.dll`) and copies it into `BepInEx\Plugins\MiraStudio` under the game folder. Pass `-p:SkipDeploy=true` to compile without copying.
+The build compiles `Miraneo.dll` against the game's own assemblies (`StudioNEOV2_Data\Managed`, `BepInEx\core\BepInEx.dll`) and copies it into `BepInEx\Plugins\Miraneo` under the game folder. Pass `-p:SkipDeploy=true` to compile without copying.
 
 ## Plugin configuration
 
-On first launch BepInEx writes `BepInEx\config\com.mirastudio.plugin.cfg`:
+On first launch BepInEx writes `BepInEx\config\com.miraneo.plugin.cfg`:
 
 | Section | Key | Default | Meaning |
 |---|---|---|---|
 | `Server` | `Port` | `6472` | TCP port of the local JSON-RPC server (`http://localhost:<port>`) |
 | `Server` | `RunInBackground` | `true` | Keep Unity running while the Studio window is unfocused, so an agent can keep driving it |
 
-If you change the port, tell the MCP server with the `MIRASTUDIO_URL` environment variable (default `http://localhost:6472`).
+If you change the port, tell the MCP server with the `MIRANEO_URL` environment variable (default `http://localhost:6472`).
 
 ## Register the MCP server
 
@@ -64,7 +64,7 @@ The repository ships a `.mcp.json`. Any MCP client that reads it spawns the serv
 ```json
 {
   "mcpServers": {
-    "mirastudio": {
+    "miraneo": {
       "command": "bun",
       "args": ["run", "mcp/src/index.ts"]
     }

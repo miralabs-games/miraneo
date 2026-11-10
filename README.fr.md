@@ -1,4 +1,4 @@
-# MiraStudio
+# Miraneo
 
 [![focus](https://img.shields.io/badge/focus-MCP%20for%20Studio%20NEO%20V2-purple)](./docs/fr/tools.md) [![lang](https://img.shields.io/badge/lang-C%23%20net46%20%C2%B7%20TypeScript%2FBun-green)](./docs/fr/architecture.md) [![target](https://img.shields.io/badge/target-Honey%20Select%202%20DX-orange)](./docs/fr/getting-started.md) [![tools](https://img.shields.io/badge/tools-56-blue)](./docs/fr/tools.md)
 
@@ -10,19 +10,19 @@
 
 ---
 
-## 🧠 Qu'est-ce que MiraStudio ?
+## 🧠 Qu'est-ce que Miraneo ?
 
 Un serveur MCP plus un plugin BepInEx qui laissent n'importe quel agent compatible MCP (Claude, ChatGPT, ...) piloter **Studio NEO V2**, l'éditeur de scènes de Honey Select 2 DX. L'agent lit la scène, crée objets et personnages, les pose os par os, règle l'environnement et vérifie le résultat par captures d'écran.
 
 Deux briques partagent un seul contrat :
 
-- **`MiraStudio.Plugin`** — un plugin BepInEx (C#, net46) qui tourne dans Studio et sert du JSON-RPC sur `localhost:6472`.
+- **`Miraneo.Plugin`** — un plugin BepInEx (C#, net46) qui tourne dans Studio et sert du JSON-RPC sur `localhost:6472`.
 - **`mcp/`** — un serveur MCP (TypeScript sur Bun, stdio) qui expose 56 tools et transmet chacun au plugin.
 
 L'entrée et la sortie de chaque tool sont décrites une seule fois, dans [`shared/schemas/`](./shared/schemas/) : un fichier JSON par tool. Le serveur MCP les importe directement ; le plugin les implémente.
 
 ```
-Client MCP ──stdio──▶ MiraStudio MCP ──HTTP JSON-RPC──▶ MiraStudio.Plugin ──▶ Studio NEO V2
+Client MCP ──stdio──▶ Miraneo MCP ──HTTP JSON-RPC──▶ Miraneo.Plugin ──▶ Studio NEO V2
 (Claude, ChatGPT)     (TypeScript / Bun)  localhost:6472   (BepInEx / C#)       (Unity 2018.4, Mono)
 ```
 
@@ -31,8 +31,8 @@ Client MCP ──stdio──▶ MiraStudio MCP ──HTTP JSON-RPC──▶ Mira
 ## 🚀 Démarrage rapide
 
 ```sh
-# 1. Compiler et déployer le plugin (nécessite plugin/MiraStudio.Plugin/GamePath.local.props)
-dotnet build plugin/MiraStudio.Plugin -c Release
+# 1. Compiler et déployer le plugin (nécessite plugin/Miraneo.Plugin/GamePath.local.props)
+dotnet build plugin/Miraneo.Plugin -c Release
 
 # 2. Installer les dépendances du serveur MCP
 cd mcp && bun install
@@ -46,7 +46,7 @@ Déclarer le serveur dans votre client MCP (le dépôt fournit un `.mcp.json`) :
 ```json
 {
   "mcpServers": {
-    "mirastudio": {
+    "miraneo": {
       "command": "bun",
       "args": ["run", "mcp/src/index.ts"]
     }
@@ -81,13 +81,13 @@ Configuration cible :
 | Plugin | .NET Framework 4.6 (`net46`) |
 | Serveur MCP | Bun |
 
-Compiler le plugin (compile et copie `MiraStudio.dll` dans `BepInEx\Plugins\MiraStudio`) :
+Compiler le plugin (compile et copie `Miraneo.dll` dans `BepInEx\Plugins\Miraneo`) :
 
 ```sh
-dotnet build plugin/MiraStudio.Plugin -c Release
+dotnet build plugin/Miraneo.Plugin -c Release
 ```
 
-Le build lit le dossier du jeu dans `plugin/MiraStudio.Plugin/GamePath.local.props` (non suivi par git). Copiez `GamePath.props.example` à côté et renseignez `GameDir`.
+Le build lit le dossier du jeu dans `plugin/Miraneo.Plugin/GamePath.local.props` (non suivi par git). Copiez `GamePath.props.example` à côté et renseignez `GameDir`.
 
 ---
 
@@ -137,7 +137,7 @@ Deux plugins tiers sont reliés quand ils sont installés : **Timeline** et **No
 ```mermaid
 flowchart TD
     A["Client MCP<br/>Claude / ChatGPT"]
-    B["MiraStudio MCP<br/>TypeScript / Bun, stdio"]
+    B["Miraneo MCP<br/>TypeScript / Bun, stdio"]
     C["Transport<br/>HttpListener, POST /rpc + GET /health"]
     D["Dispatcher thread principal<br/>vidé dans Update()"]
     E["Services<br/>orchestrent les appels d'adapter"]
@@ -174,8 +174,8 @@ Les types Unity et Studio s'arrêtent à la couche adapter ; tout ce qui est au-
 ## 🛠️ Build & tests
 
 ```sh
-# plugin : compilation + déploiement dans BepInEx\Plugins\MiraStudio
-dotnet build plugin/MiraStudio.Plugin -c Release
+# plugin : compilation + déploiement dans BepInEx\Plugins\Miraneo
+dotnet build plugin/Miraneo.Plugin -c Release
 
 # serveur MCP : installation, typecheck, smoke test
 cd mcp && bun install && bun x tsc --noEmit && bun run test/smoke.ts
@@ -186,9 +186,9 @@ Le smoke test lance le serveur MCP en stdio, liste les tools (56) et appelle `st
 Structure du dépôt :
 
 ```text
-MiraStudio/
+Miraneo/
 ├── docs/{en,fr}/             # docs utilisateur, architecture, internes
-├── plugin/MiraStudio.Plugin/ # plugin BepInEx (Core, Adapters, Services, Transport)
+├── plugin/Miraneo.Plugin/ # plugin BepInEx (Core, Adapters, Services, Transport)
 ├── mcp/                      # serveur MCP (TypeScript / Bun)
 ├── shared/schemas/           # un schéma JSON par tool, partagé par le plugin et le MCP
 └── tools/reverse-engineering/# scripts de dump d'assemblies / diagnostic
@@ -202,6 +202,6 @@ L'analyse de la cible est dans les internes : [`reverse-engineering`](./docs/fr/
 
 - Rétro-ingénierie d'abord — ne jamais coder contre une API imaginée.
 - Les tools en lecture seule avant les tools d'écriture.
-- Les types Unity et Studio ne sortent jamais de la couche adapter ; le MCP ne voit que l'API MiraStudio.
+- Les types Unity et Studio ne sortent jamais de la couche adapter ; le MCP ne voit que l'API Miraneo.
 - Chaque tool MCP a un schéma JSON strict.
 - Opérations idempotentes, ids stables, support du batch.

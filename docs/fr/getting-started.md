@@ -27,7 +27,7 @@ Comment ces versions ont été établies : [internals/reverse-engineering.md](./
 Le projet doit savoir où le jeu est installé. Copiez le fichier props d'exemple et renseignez `GameDir` :
 
 ```text
-plugin/MiraStudio.Plugin/GamePath.props.example  →  plugin/MiraStudio.Plugin/GamePath.local.props
+plugin/Miraneo.Plugin/GamePath.props.example  →  plugin/Miraneo.Plugin/GamePath.local.props
 ```
 
 ```xml
@@ -41,21 +41,21 @@ plugin/MiraStudio.Plugin/GamePath.props.example  →  plugin/MiraStudio.Plugin/G
 `GamePath.local.props` n'est pas suivi par git. Puis compilez :
 
 ```sh
-dotnet build plugin/MiraStudio.Plugin -c Release
+dotnet build plugin/Miraneo.Plugin -c Release
 ```
 
-Le build compile `MiraStudio.dll` contre les assemblies du jeu (`StudioNEOV2_Data\Managed`, `BepInEx\core\BepInEx.dll`) et le copie dans `BepInEx\Plugins\MiraStudio` du dossier du jeu. Ajoutez `-p:SkipDeploy=true` pour compiler sans copier.
+Le build compile `Miraneo.dll` contre les assemblies du jeu (`StudioNEOV2_Data\Managed`, `BepInEx\core\BepInEx.dll`) et le copie dans `BepInEx\Plugins\Miraneo` du dossier du jeu. Ajoutez `-p:SkipDeploy=true` pour compiler sans copier.
 
 ## Configuration du plugin
 
-Au premier lancement, BepInEx écrit `BepInEx\config\com.mirastudio.plugin.cfg` :
+Au premier lancement, BepInEx écrit `BepInEx\config\com.miraneo.plugin.cfg` :
 
 | Section | Clé | Défaut | Signification |
 |---|---|---|---|
 | `Server` | `Port` | `6472` | Port TCP du serveur JSON-RPC local (`http://localhost:<port>`) |
 | `Server` | `RunInBackground` | `true` | Garde Unity actif quand la fenêtre Studio n'a plus le focus, pour qu'un agent puisse continuer à le piloter |
 
-Si vous changez le port, indiquez-le au serveur MCP avec la variable d'environnement `MIRASTUDIO_URL` (défaut `http://localhost:6472`).
+Si vous changez le port, indiquez-le au serveur MCP avec la variable d'environnement `MIRANEO_URL` (défaut `http://localhost:6472`).
 
 ## Déclarer le serveur MCP
 
@@ -64,7 +64,7 @@ Le dépôt fournit un `.mcp.json`. Tout client MCP qui le lit lance le serveur e
 ```json
 {
   "mcpServers": {
-    "mirastudio": {
+    "miraneo": {
       "command": "bun",
       "args": ["run", "mcp/src/index.ts"]
     }

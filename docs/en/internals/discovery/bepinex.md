@@ -71,7 +71,7 @@ Top-level folders of `BepInEx`: `BRInfo`, `cache`, `config`, `core`, `LauncherEN
 | Chainloader | HideManagerGameObject = false |
 | SplashScreen | Enabled = true, OnlyNoConsole = true |
 
-For MiraStudio: console and disk logging are both disabled out of the box. The plugin has to rely on its own log sink, or the config has to be adjusted.
+For Miraneo: console and disk logging are both disabled out of the box. The plugin has to rely on its own log sink, or the config has to be adjusted.
 
 ## Other config files
 

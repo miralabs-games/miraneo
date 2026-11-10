@@ -1,6 +1,6 @@
 # Runtime — engine, loader and version facts of HS2 DX BetterRepack R16
 
-Which Unity, Mono and BepInEx versions the install runs on, how the loader hooks in, and what that means for the MiraStudio plugin.
+Which Unity, Mono and BepInEx versions the install runs on, how the loader hooks in, and what that means for the Miraneo plugin.
 
 Game root: `<game>`. Inventory date: 2026-08-30.
 
@@ -70,7 +70,7 @@ The engine is **Unity 2018.4.11f1** (LTS). The FileDescription, ProductName and 
 
 `Get-Process HoneySelect2, StudioNEOV2, HoneySelect2VR` returned nothing: no game process was running when the inventory was taken.
 
-## Implications for the MiraStudio plugin
+## Implications for the Miraneo plugin
 
 - Target framework: .NET Framework 4.x, net35 to net46 compatible (the Unity 2018.4 Mono runtime matches the .NET 4.x API profile; C# 7.3 compatibility via Mono). See [Assemblies](assemblies.md) for the net46 choice.
 - Plugin API: BepInEx 5.4.23.x (`BaseUnityPlugin`, BepInEx 5 namespace), not BepInEx 6.

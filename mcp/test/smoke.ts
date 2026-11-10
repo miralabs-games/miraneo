@@ -7,7 +7,7 @@ const transport = new StdioClientTransport({
   cwd: `${import.meta.dir}/..`,
 });
 
-const client = new Client({ name: "mirastudio-smoke", version: "0.0.0" });
+const client = new Client({ name: "miraneo-smoke", version: "0.0.0" });
 await client.connect(transport);
 
 const tools = await client.listTools();

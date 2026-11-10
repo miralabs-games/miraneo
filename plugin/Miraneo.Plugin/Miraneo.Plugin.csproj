@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net46</TargetFramework>
-    <AssemblyName>MiraStudio</AssemblyName>
-    <RootNamespace>MiraStudio</RootNamespace>
+    <AssemblyName>Miraneo</AssemblyName>
+    <RootNamespace>Miraneo</RootNamespace>
     <Version>0.1.0</Version>
     <LangVersion>7.3</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -63,8 +63,8 @@
   </ItemGroup>
 
   <Target Name="MiraDeployToGame" AfterTargets="Build" Condition="'$(GameDir)' != '' And '$(SkipDeploy)' != 'true'">
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\Plugins\MiraStudio" />
-    <Message Importance="high" Text="MiraStudio.dll deployed to $(GameDir)\BepInEx\Plugins\MiraStudio" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\Plugins\Miraneo" />
+    <Message Importance="high" Text="Miraneo.dll deployed to $(GameDir)\BepInEx\Plugins\Miraneo" />
   </Target>
 
 </Project>
