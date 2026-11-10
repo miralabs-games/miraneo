@@ -1,4 +1,5 @@
 import { MiraBridge } from "./bridge.ts";
+import { toMarkdown } from "./format.ts";
 import getInfo from "../../shared/schemas/studio_get_info.json";
 import getScene from "../../shared/schemas/studio_get_scene.json";
 import listCharacters from "../../shared/schemas/studio_list_characters.json";
@@ -158,7 +159,13 @@ export async function runTool(name: string, args: Record<string, unknown>) {
         ],
       };
     }
-    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+    if (name.startsWith("studio_list_") || name === "studio_search_catalog") {
+      return {
+        content: [{ type: "text" as const, text: toMarkdown(name.slice("studio_".length), result) }],
+        structuredContent: (Array.isArray(result) ? { items: result } : result) as Record<string, unknown>,
+      };
+    }
+    return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
   } catch (e) {
     return errorResult(e instanceof Error ? e.message : String(e));
   }
