@@ -160,10 +160,7 @@ export async function runTool(name: string, args: Record<string, unknown>) {
       };
     }
     if (name.startsWith("studio_list_") || name === "studio_search_catalog") {
-      return {
-        content: [{ type: "text" as const, text: toMarkdown(name.slice("studio_".length), result) }],
-        structuredContent: (Array.isArray(result) ? { items: result } : result) as Record<string, unknown>,
-      };
+      return { content: [{ type: "text" as const, text: toMarkdown(name.slice("studio_".length), result) }] };
     }
     return { content: [{ type: "text" as const, text: JSON.stringify(result) }] };
   } catch (e) {
