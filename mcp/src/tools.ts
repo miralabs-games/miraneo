@@ -1,5 +1,5 @@
 import { MiraBridge } from "./bridge.ts";
-import { toMarkdown } from "./format.ts";
+import { ECO, economise, toMarkdown } from "./format.ts";
 import getInfo from "../../shared/schemas/studio_get_info.json";
 import getScene from "../../shared/schemas/studio_get_scene.json";
 import listCharacters from "../../shared/schemas/studio_list_characters.json";
@@ -145,7 +145,8 @@ export async function runTool(name: string, args: Record<string, unknown>) {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return errorResult(`unknown tool: ${name}`);
   try {
-    const result = await bridge.call(name, args, tool.timeoutMs);
+    const raw = await bridge.call(name, args, tool.timeoutMs);
+    const result = ECO && !tool.image ? economise(raw) : raw;
     if (tool.image) {
       const shot = result as ScreenshotResult;
       return {

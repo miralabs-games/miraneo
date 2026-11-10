@@ -57,6 +57,8 @@ Au premier lancement, BepInEx écrit `BepInEx\config\com.miraneo.plugin.cfg` :
 
 Si vous changez le port, indiquez-le au serveur MCP avec la variable d'environnement `MIRANEO_URL` (défaut `http://localhost:6472`).
 
+Mettez `MIRANEO_ECO=1` (ou `true`, `on`, `yes`) dans l'`env` du serveur pour activer le mode éco : les résultats coûtent moins de tokens mais perdent en précision, car chaque nombre non entier est arrondi à 4 décimales avant d'arriver au modèle. Désactivé par défaut. Le mode éco pourra à l'avenir sacrifier davantage de précision ou de mise en forme au profit de la taille.
+
 ## Déclarer le serveur MCP
 
 Le dépôt fournit un `.mcp.json`. Tout client MCP qui le lit lance le serveur en stdio :
